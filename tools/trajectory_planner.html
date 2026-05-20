@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>轨迹规划工具</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 32px 16px 64px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; font-weight: 600; color: #f8fafc; margin-bottom: 6px; }
+    .subtitle { font-size: 0.875rem; color: #94a3b8; margin-bottom: 28px; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid #1e293b; padding-bottom: 0; }
+    .tab {
+      padding: 10px 20px;
+      border-radius: 8px 8px 0 0;
+      border: 1px solid transparent;
+      border-bottom: none;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #64748b;
+      background: transparent;
+      transition: all 0.15s;
+      margin-bottom: -1px;
+    }
+    .tab:hover { color: #94a3b8; }
+    .tab.active {
+      color: #f1f5f9;
+      background: #1e293b;
+      border-color: #334155;
+      border-bottom-color: #1e293b;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Cards */
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 16px;
+    }
+    .card-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      margin-bottom: 16px;
+    }
+
+    /* Form */
+    .field-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field.full { grid-column: 1 / -1; }
+    label { font-size: 0.78rem; color: #94a3b8; font-weight: 500; }
+    .input-wrap { position: relative; }
+    .input-wrap input { padding-right: 52px; }
+    .unit {
+      position: absolute; right: 10px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.72rem; color: #475569; pointer-events: none;
+    }
+    input[type="number"], input[type="text"] {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #f1f5f9;
+      font-size: 0.9rem;
+      padding: 9px 11px;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input:focus { border-color: #3b82f6; }
+
+    /* Buttons */
+    .btn {
+      padding: 9px 20px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.15s;
+    }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-sm { padding: 5px 12px; font-size: 0.75rem; }
+    .btn-danger { background: #7f1d1d; color: #fca5a5; border: 1px solid #991b1b; }
+    .btn-danger:hover { background: #991b1b; }
+    .btn-secondary { background: #1e3a5f; color: #7dd3fc; border: 1px solid #1d4ed8; }
+    .btn-secondary:hover { background: #1d3d6b; }
+
+    /* Results */
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 4px; }
+    .result-item {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .result-label { font-size: 0.7rem; color: #64748b; margin-bottom: 3px; }
+    .result-value { font-size: 1rem; font-weight: 700; color: #34d399; font-family: 'Consolas', monospace; }
+    .result-unit { font-size: 0.7rem; color: #475569; margin-left: 3px; }
+
+    /* Canvas */
+    canvas {
+      width: 100%;
+      border-radius: 8px;
+      background: #0a0f1e;
+      display: block;
+    }
+
+    /* Phase table */
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    th {
+      text-align: left; padding: 7px 10px;
+      color: #64748b; font-weight: 600; font-size: 0.7rem;
+      border-bottom: 1px solid #334155; text-transform: uppercase;
+    }
+    td { padding: 7px 10px; border-bottom: 1px solid #1e293b; }
+    tr:last-child td { border-bottom: none; }
+    .phase-name { color: #7dd3fc; font-weight: 600; }
+    .num { font-family: 'Consolas', monospace; color: #f1f5f9; }
+
+    /* Via-point table */
+    .via-table { width: 100%; border-collapse: collapse; }
+    .via-table th { text-align: left; padding: 6px 10px; color: #64748b; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; border-bottom: 1px solid #334155; }
+    .via-table td { padding: 5px 6px; border-bottom: 1px solid #1a2744; }
+    .via-table input { padding: 6px 8px; font-size: 0.82rem; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #f1f5f9; width: 100%; outline: none; }
+    .via-table input:focus { border-color: #3b82f6; }
+    .via-table input[readonly] { color: #64748b; cursor: not-allowed; }
+
+    /* Error / info */
+    .error-msg { color: #f87171; font-size: 0.78rem; padding: 8px 0 4px; }
+    .info-box {
+      background: #0c2231;
+      border: 1px solid #1e3a5f;
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 0.78rem;
+      color: #7dd3fc;
+      line-height: 1.7;
+    }
+    .info-box code {
+      background: #0a1929;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-family: 'Consolas', monospace;
+    }
+    .badge {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-weight: 700;
+    }
+    .badge-ok { background: #14532d; color: #4ade80; }
+    .badge-warn { background: #713f12; color: #fcd34d; }
+
+    /* Legend */
+    .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #64748b; }
+    .legend-dot { width: 12px; height: 3px; border-radius: 2px; }
+
+    /* Segment result rows */
+    .seg-result {
+      background: #0a1929;
+      border: 1px solid #1e3a5f;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-top: 8px;
+      font-size: 0.78rem;
+    }
+    .seg-title { color: #7dd3fc; font-weight: 600; margin-bottom: 5px; }
+    .seg-row { display: flex; flex-wrap: wrap; gap: 20px; }
+    .seg-kv { color: #94a3b8; }
+    .seg-kv span { color: #f1f5f9; font-family: 'Consolas', monospace; font-weight: 600; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>轨迹规划工具</h1>
+  <p class="subtitle">梯形速度曲线 · S 曲线（Jerk 限制）· 多段点位规划</p>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab(0)">梯形速度曲线</div>
+    <div class="tab" onclick="switchTab(1)">S 曲线</div>
+    <div class="tab" onclick="switchTab(2)">多段点位规划</div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB 0: 梯形速度曲线
+  ══════════════════════════════════════════════════════════ -->
+  <div class="tab-panel active" id="panel-0">
+    <div class="card">
+      <div class="card-title">参数输入</div>
+      <div class="field-grid">
+        <div class="field">
+          <label>目标位移</label>
+          <div class="input-wrap">
+            <input type="number" id="t_dist" value="100" min="0.001" step="any">
+            <span class="unit">mm</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>最大速度 v_max</label>
+          <div class="input-wrap">
+            <input type="number" id="t_vmax" value="50" min="0.001" step="any">
+            <span class="unit">mm/s</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>加速度 a</label>
+          <div class="input-wrap">
+            <input type="number" id="t_acc" value="100" min="0.001" step="any">
+            <span class="unit">mm/s²</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>起始速度 v0</label>
+          <div class="input-wrap">
+            <input type="number" id="t_v0" value="0" min="0" step="any">
+            <span class="unit">mm/s</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>终止速度 v1</label>
+          <div class="input-wrap">
+            <input type="number" id="t_v1" value="0" min="0" step="any">
+            <span class="unit">mm/s</span>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <button class="btn btn-primary" onclick="calcTrapezoid()">计算 &amp; 绘图</button>
+      </div>
+      <div class="error-msg" id="t_err"></div>
+    </div>
+
+    <div class="card" id="t_result_card" style="display:none">
+      <div class="card-title">计算结果</div>
+      <div class="result-grid" id="t_results"></div>
+      <div style="margin-top:16px">
+        <canvas id="t_canvas" height="220"></canvas>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>速度 v(t)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>加速度 a(t)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#34d399"></div>位移 x(t)</div>
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <div class="card-title">各阶段明细</div>
+        <table id="t_phase_table">
+          <thead><tr><th>阶段</th><th>起始速度</th><th>终止速度</th><th>持续时间</th><th>位移</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">公式说明</div>
+      <div class="info-box">
+        三段式梯形曲线：<strong>加速段 → 匀速段 → 减速段</strong><br>
+        当距离不足以达到 v_max 时，自动降格为<strong>三角形</strong>曲线（无匀速段），峰值速度为 <code>v_peak = √(a·d + (v0²+v1²)/2)</code><br><br>
+        加速时间：<code>t_acc = (v_peak − v0) / a</code>&nbsp;&nbsp;
+        减速时间：<code>t_dec = (v_peak − v1) / a</code><br>
+        匀速时间：<code>t_const = (d − d_acc − d_dec) / v_peak</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB 1: S 曲线
+  ══════════════════════════════════════════════════════════ -->
+  <div class="tab-panel" id="panel-1">
+    <div class="card">
+      <div class="card-title">参数输入</div>
+      <div class="field-grid">
+        <div class="field">
+          <label>目标位移</label>
+          <div class="input-wrap">
+            <input type="number" id="s_dist" value="100" min="0.001" step="any">
+            <span class="unit">mm</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>最大速度 v_max</label>
+          <div class="input-wrap">
+            <input type="number" id="s_vmax" value="50" min="0.001" step="any">
+            <span class="unit">mm/s</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>最大加速度 a_max</label>
+          <div class="input-wrap">
+            <input type="number" id="s_amax" value="100" min="0.001" step="any">
+            <span class="unit">mm/s²</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>最大加加速度 J</label>
+          <div class="input-wrap">
+            <input type="number" id="s_jmax" value="500" min="0.001" step="any">
+            <span class="unit">mm/s³</span>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <button class="btn btn-primary" onclick="calcSCurve()">计算 &amp; 绘图</button>
+      </div>
+      <div class="error-msg" id="s_err"></div>
+    </div>
+
+    <div class="card" id="s_result_card" style="display:none">
+      <div class="card-title">计算结果</div>
+      <div class="result-grid" id="s_results"></div>
+      <div style="margin-top:16px">
+        <canvas id="s_canvas" height="240"></canvas>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>速度 v(t)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>加速度 a(t)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div>加加速度 j(t)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#34d399"></div>位移 x(t)</div>
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <div class="card-title">7 段明细</div>
+        <table id="s_phase_table">
+          <thead><tr><th>段</th><th>名称</th><th>Jerk</th><th>持续时间</th><th>末速度</th><th>末加速度</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">公式说明</div>
+      <div class="info-box">
+        S 曲线将加速过程分为 <strong>7 段</strong>：加加速 → 匀加速 → 减加速 → 匀速 → 加减速 → 匀减速 → 减减速<br>
+        Jerk 限制（段 1,3,5,7）：<code>T_j = a_max / J</code><br>
+        匀加速段（段 2）：<code>T_a = (v_max/a_max) − T_j</code>（若 &lt; 0 则 a_max 降格）<br>
+        匀速段（段 4）：<code>T_v = d/v_max − v_max/a_max − T_j</code>（若 &lt; 0 则 v_max 降格）
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB 2: 多段点位规划
+  ══════════════════════════════════════════════════════════ -->
+  <div class="tab-panel" id="panel-2">
+    <div class="card">
+      <div class="card-title">公共参数</div>
+      <div class="field-grid">
+        <div class="field">
+          <label>最大速度 v_max</label>
+          <div class="input-wrap">
+            <input type="number" id="m_vmax" value="80" min="0.001" step="any">
+            <span class="unit">mm/s</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>加速度 a</label>
+          <div class="input-wrap">
+            <input type="number" id="m_acc" value="200" min="0.001" step="any">
+            <span class="unit">mm/s²</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Via 点列表</div>
+      <table class="via-table" id="via_table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>位置 (mm)</th>
+            <th>过点速度 (mm/s, 留空=自动)</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="via_tbody"></tbody>
+      </table>
+      <div style="margin-top:12px; display:flex; gap:10px;">
+        <button class="btn btn-secondary btn-sm" onclick="addViaPoint()">+ 添加点</button>
+        <button class="btn btn-primary" onclick="calcMultiSeg()">规划</button>
+      </div>
+      <div class="error-msg" id="m_err"></div>
+    </div>
+
+    <div id="m_result_card" style="display:none">
+      <div class="card">
+        <div class="card-title">各段规划结果</div>
+        <div id="m_seg_results"></div>
+        <div style="margin-top:16px">
+          <canvas id="m_canvas" height="240"></canvas>
+          <div class="legend">
+            <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>速度 v(t)</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#34d399"></div>位移 x(t)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">速度衔接说明</div>
+      <div class="info-box">
+        过点速度处理：若用户指定过点速度，段终/段始速度取该值；若留空，系统自动计算<strong>最大可行过点速度</strong>（基于减速/加速距离对称约束），使相邻段平滑衔接。<br><br>
+        首尾两端速度固定为 0（静止出发/到达）。每段独立使用梯形速度曲线规划。
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Utility ──────────────────────────────────────────────────────────────────
+function rv(id) { return parseFloat(document.getElementById(id).value); }
+function fmt(v, d=3) { return isNaN(v) ? '—' : v.toFixed(d); }
+function setErr(id, msg) { document.getElementById(id).textContent = msg; }
+
+function mkResult(label, value, unit='') {
+  return `<div class="result-item">
+    <div class="result-label">${label}</div>
+    <div class="result-value">${value}<span class="result-unit">${unit}</span></div>
+  </div>`;
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function switchTab(i) {
+  document.querySelectorAll('.tab').forEach((t,j) => t.classList.toggle('active', j===i));
+  document.querySelectorAll('.tab-panel').forEach((p,j) => p.classList.toggle('active', j===i));
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TAB 0: TRAPEZOIDAL
+// ══════════════════════════════════════════════════════════════════════════════
+function trapPlan(dist, vmax, acc, v0, v1) {
+  // Returns {phases, totalTime, vpeak, triangular}
+  // Each phase: {name, v0, v1, acc, t, d}
+  if (dist <= 0 || vmax <= 0 || acc <= 0) return null;
+  v0 = Math.min(v0, vmax); v1 = Math.min(v1, vmax);
+
+  // Check if triangle profile (can't reach vmax)
+  // d_acc = (vmax²-v0²)/(2a), d_dec = (vmax²-v1²)/(2a)
+  const d_acc_full = (vmax*vmax - v0*v0) / (2*acc);
+  const d_dec_full = (vmax*vmax - v1*v1) / (2*acc);
+
+  let vpeak, triangular;
+  if (d_acc_full + d_dec_full > dist) {
+    // Triangle: solve v_peak from d_acc + d_dec = dist
+    // (vp²-v0²)/(2a) + (vp²-v1²)/(2a) = dist
+    // 2vp² - v0² - v1² = 2*a*dist
+    const vp2 = (2*acc*dist + v0*v0 + v1*v1) / 2;
+    if (vp2 < 0) return null;
+    vpeak = Math.sqrt(vp2);
+    triangular = true;
+  } else {
+    vpeak = vmax;
+    triangular = false;
+  }
+
+  const t_acc = (vpeak - v0) / acc;
+  const d_acc  = (vpeak + v0) * t_acc / 2;
+  const t_dec = (vpeak - v1) / acc;
+  const d_dec  = (vpeak + v1) * t_dec / 2;
+  const d_const = dist - d_acc - d_dec;
+  const t_const = d_const / vpeak;
+
+  const phases = [];
+  if (t_acc > 1e-9)  phases.push({ name:'加速段', v0, v1:vpeak, acc:acc,  t:t_acc,   d:d_acc   });
+  if (t_const > 1e-9) phases.push({ name:'匀速段', v0:vpeak, v1:vpeak, acc:0, t:t_const, d:d_const });
+  if (t_dec > 1e-9)  phases.push({ name:'减速段', v0:vpeak, v1:v1,    acc:-acc, t:t_dec,   d:d_dec   });
+
+  const totalTime = t_acc + t_const + t_dec;
+  return { phases, totalTime, vpeak, triangular };
+}
+
+function trapState(phases, t) {
+  let elapsed = 0, x = 0, v = phases[0]?.v0 ?? 0;
+  for (const ph of phases) {
+    if (t <= elapsed + ph.t + 1e-12) {
+      const dt = t - elapsed;
+      v = ph.v0 + ph.acc * dt;
+      x += ph.v0 * dt + 0.5 * ph.acc * dt * dt;
+      return { v, a: ph.acc, x };
+    }
+    elapsed += ph.t;
+    x += ph.d;
+    v = ph.v1;
+  }
+  return { v: phases[phases.length-1]?.v1 ?? 0, a: 0, x };
+}
+
+function calcTrapezoid() {
+  setErr('t_err', '');
+  const dist = rv('t_dist'), vmax = rv('t_vmax'), acc = rv('t_acc');
+  const v0 = rv('t_v0') || 0, v1 = rv('t_v1') || 0;
+  if (isNaN(dist)||isNaN(vmax)||isNaN(acc)||dist<=0||vmax<=0||acc<=0) {
+    setErr('t_err','请输入有效的正数参数'); return;
+  }
+  const plan = trapPlan(dist, vmax, acc, v0, v1);
+  if (!plan) { setErr('t_err','参数无效，无法规划（检查起终速是否超过 vmax）'); return; }
+
+  document.getElementById('t_result_card').style.display = '';
+  const res = document.getElementById('t_results');
+  res.innerHTML =
+    mkResult('总时间', fmt(plan.totalTime,4), 's') +
+    mkResult('峰值速度', fmt(plan.vpeak,3), 'mm/s') +
+    mkResult('曲线类型', plan.triangular ? '三角形' : '梯形') +
+    mkResult('加速段时间', fmt(plan.phases.find(p=>p.name==='加速段')?.t??0,4), 's') +
+    mkResult('匀速段时间', fmt(plan.phases.find(p=>p.name==='匀速段')?.t??0,4), 's') +
+    mkResult('减速段时间', fmt(plan.phases.find(p=>p.name==='减速段')?.t??0,4), 's');
+
+  // Phase table
+  const tbody = document.querySelector('#t_phase_table tbody');
+  tbody.innerHTML = plan.phases.map(ph => `<tr>
+    <td class="phase-name">${ph.name}</td>
+    <td class="num">${fmt(ph.v0,3)}</td><td class="num">${fmt(ph.v1,3)}</td>
+    <td class="num">${fmt(ph.t,4)} s</td><td class="num">${fmt(ph.d,4)} mm</td>
+  </tr>`).join('');
+
+  drawTrapCanvas(plan);
+}
+
+function drawTrapCanvas(plan) {
+  const canvas = document.getElementById('t_canvas');
+  const W = canvas.offsetWidth || 860;
+  canvas.width = W * devicePixelRatio;
+  canvas.height = 220 * devicePixelRatio;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  drawProfileCanvas(ctx, W, 220, plan.phases, plan.totalTime, false);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TAB 1: S-CURVE
+// ══════════════════════════════════════════════════════════════════════════════
+function sCurvePlan(dist, vmax, amax, jmax) {
+  if (dist<=0||vmax<=0||amax<=0||jmax<=0) return null;
+
+  // T_j: time for jerk phase
+  let Tj = amax / jmax;
+  // Check if amax is reachable in jerk-limited acceleration to vmax
+  // v at end of jerk phase pair = jmax * Tj² (if no const-acc phase)
+  // If jmax * Tj² >= vmax, then amax not fully reachable → reduce amax
+  let _amax = amax;
+  if (jmax * Tj * Tj > vmax) {
+    // Triangle accel (no const-acc), peak accel = sqrt(jmax * vmax)
+    _amax = Math.sqrt(jmax * vmax);
+    Tj = _amax / jmax;
+  }
+  const Ta = vmax / _amax - Tj; // const-acc duration (can be 0)
+
+  // Distance covered during full accel to vmax (symmetric decel mirror)
+  const d_accel = vmax * (Tj + Ta); // each half of symmetric profile
+  // Actually compute properly:
+  // Phase 1: j=+J, t=Tj  → v=J*Tj²/2, a=J*Tj
+  // Phase 2: j=0, a=amax, t=Ta → ...
+  // Phase 3: j=-J, t=Tj  → v=vmax, a=0
+  // d during accel (phases 1-3):
+  const d_j1 = jmax * Tj*Tj*Tj / 6;
+  const v_j1 = jmax * Tj*Tj / 2;
+  const d_a2 = v_j1 * Ta + 0.5 * _amax * Ta * Ta;
+  const v_a2 = v_j1 + _amax * Ta;
+  const d_j3 = v_a2 * Tj + 0.5 * _amax * Tj*Tj - jmax * Tj*Tj*Tj / 6;
+  const d_accel_half = d_j1 + d_a2 + d_j3; // distance in accel ramp
+
+  // Total distance for accel+decel (symmetric, both halves):
+  const d_ramp = 2 * d_accel_half;
+
+  let Tv; // const-vel duration
+  if (d_ramp > dist) {
+    // Can't reach vmax → reduce vmax
+    // Iterative bisection to find achievable vpeak
+    let lo = 0, hi = vmax;
+    for (let i = 0; i < 60; i++) {
+      const vm = (lo + hi) / 2;
+      const r = sRampDist(vm, _amax, jmax);
+      if (r < dist) lo = vm; else hi = vm;
+    }
+    const vpeak = (lo + hi) / 2;
+    // Recompute with vpeak
+    return sCurvePlanFixed(dist, vpeak, _amax, jmax, true);
+  } else {
+    Tv = (dist - d_ramp) / vmax;
+    return sCurvePlanFixed(dist, vmax, _amax, jmax, false, Tv, Tj, Ta);
+  }
+}
+
+function sRampDist(vmax, amax, jmax) {
+  let Tj = amax / jmax;
+  if (jmax * Tj * Tj > vmax) {
+    amax = Math.sqrt(jmax * vmax);
+    Tj = amax / jmax;
+  }
+  const Ta = Math.max(0, vmax / amax - Tj);
+  const d_j1 = jmax * Tj*Tj*Tj / 6;
+  const v_j1 = jmax * Tj*Tj / 2;
+  const d_a2 = v_j1 * Ta + 0.5 * amax * Ta * Ta;
+  const v_a2 = v_j1 + amax * Ta;
+  const d_j3 = v_a2 * Tj + 0.5 * amax * Tj*Tj - jmax * Tj*Tj*Tj / 6;
+  return 2 * (d_j1 + d_a2 + d_j3);
+}
+
+function sCurvePlanFixed(dist, vmax, amax, jmax, reduced, Tv, Tj, Ta) {
+  if (Tj === undefined) {
+    Tj = amax / jmax;
+    if (jmax * Tj * Tj > vmax) {
+      amax = Math.sqrt(jmax * vmax);
+      Tj = amax / jmax;
+    }
+    Ta = Math.max(0, vmax / amax - Tj);
+    const d_j1 = jmax * Tj*Tj*Tj / 6;
+    const v_j1 = jmax * Tj*Tj / 2;
+    const d_a2 = v_j1 * Ta + 0.5 * amax * Ta * Ta;
+    const v_a2 = v_j1 + amax * Ta;
+    const d_j3 = v_a2 * Tj + 0.5 * amax * Tj*Tj - jmax * Tj*Tj*Tj / 6;
+    const d_ramp = 2 * (d_j1 + d_a2 + d_j3);
+    Tv = Math.max(0, (dist - d_ramp) / vmax);
+  }
+
+  // Build 7 segments
+  // Accel half: seg1(j=+J,t=Tj), seg2(j=0,t=Ta), seg3(j=-J,t=Tj)
+  // Const vel:  seg4(j=0,t=Tv)
+  // Decel half: seg5(j=-J,t=Tj), seg6(j=0,t=Ta), seg7(j=+J,t=Tj)
+  const segs = [
+    { name: '加加速', j: jmax,  t: Tj },
+    { name: '匀加速', j: 0,     t: Ta },
+    { name: '减加速', j: -jmax, t: Tj },
+    { name: '匀速',   j: 0,     t: Tv },
+    { name: '加减速', j: -jmax, t: Tj },
+    { name: '匀减速', j: 0,     t: Ta },
+    { name: '减减速', j: jmax,  t: Tj },
+  ];
+
+  // Compute v, a at end of each segment
+  let v = 0, a = 0, x = 0;
+  segs.forEach(seg => {
+    seg.v0 = v; seg.a0 = a; seg.x0 = x;
+    seg.x1 = x + v*seg.t + 0.5*a*seg.t*seg.t + (1/6)*seg.j*seg.t*seg.t*seg.t;
+    seg.v1 = v + a*seg.t + 0.5*seg.j*seg.t*seg.t;
+    seg.a1 = a + seg.j*seg.t;
+    v = seg.v1; a = seg.a1; x = seg.x1;
+  });
+
+  const totalTime = segs.reduce((s, sg) => s + sg.t, 0);
+  return { segs, totalTime, vpeak: vmax, amax, jmax, Tj, Ta, Tv: Tv??0, reduced };
+}
+
+function sState(segs, t) {
+  let elapsed = 0;
+  for (const seg of segs) {
+    if (t <= elapsed + seg.t + 1e-12) {
+      const dt = t - elapsed;
+      const v = seg.v0 + seg.a0*dt + 0.5*seg.j*dt*dt;
+      const a = seg.a0 + seg.j*dt;
+      const x = seg.x0 + seg.v0*dt + 0.5*seg.a0*dt*dt + (1/6)*seg.j*dt*dt*dt;
+      return { v, a, j: seg.j, x };
+    }
+    elapsed += seg.t;
+  }
+  const last = segs[segs.length-1];
+  return { v: last.v1, a: last.a1, j: 0, x: last.x1 };
+}
+
+function calcSCurve() {
+  setErr('s_err', '');
+  const dist = rv('s_dist'), vmax = rv('s_vmax'), amax = rv('s_amax'), jmax = rv('s_jmax');
+  if ([dist,vmax,amax,jmax].some(v=>isNaN(v)||v<=0)) { setErr('s_err','请输入有效正数参数'); return; }
+
+  const plan = sCurvePlan(dist, vmax, amax, jmax);
+  if (!plan) { setErr('s_err','规划失败，请检查参数'); return; }
+
+  document.getElementById('s_result_card').style.display = '';
+  document.getElementById('s_results').innerHTML =
+    mkResult('总时间', fmt(plan.totalTime,4), 's') +
+    mkResult('峰值速度', fmt(plan.vpeak,3), 'mm/s') +
+    mkResult('实际 a_max', fmt(plan.amax,3), 'mm/s²') +
+    mkResult('Jerk 段时间 Tj', fmt(plan.Tj,4), 's') +
+    mkResult('匀加速时间 Ta', fmt(plan.Ta,4), 's') +
+    mkResult('匀速时间 Tv', fmt(plan.Tv,4), 's') +
+    (plan.reduced ? mkResult('降格','速度/加速度已降格','') : '');
+
+  const tbody = document.querySelector('#s_phase_table tbody');
+  tbody.innerHTML = plan.segs.map((s,i) => `<tr>
+    <td class="num">${i+1}</td>
+    <td class="phase-name">${s.name}</td>
+    <td class="num">${fmt(s.j,1)}</td>
+    <td class="num">${fmt(s.t,4)} s</td>
+    <td class="num">${fmt(s.v1,4)}</td>
+    <td class="num">${fmt(s.a1,4)}</td>
+  </tr>`).join('');
+
+  drawSCanvas(plan);
+}
+
+function drawSCanvas(plan) {
+  const canvas = document.getElementById('s_canvas');
+  const W = canvas.offsetWidth || 860;
+  canvas.width = W * devicePixelRatio;
+  canvas.height = 240 * devicePixelRatio;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  drawSProfileCanvas(ctx, W, 240, plan);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TAB 2: MULTI-SEGMENT
+// ══════════════════════════════════════════════════════════════════════════════
+let viaPoints = [];
+
+function initViaPoints() {
+  viaPoints = [
+    { pos: 0,   vc: null },
+    { pos: 50,  vc: null },
+    { pos: 120, vc: null },
+    { pos: 200, vc: null },
+  ];
+  renderViaTable();
+}
+
+function renderViaTable() {
+  const tbody = document.getElementById('via_tbody');
+  tbody.innerHTML = viaPoints.map((p, i) => {
+    const isFirst = i === 0, isLast = i === viaPoints.length - 1;
+    const vcVal = (isFirst || isLast) ? '0' : (p.vc !== null ? p.vc : '');
+    const vcReadonly = (isFirst || isLast) ? 'readonly' : '';
+    return `<tr>
+      <td style="color:#64748b;font-size:0.8rem;padding:5px 10px">${i+1}</td>
+      <td><input type="number" value="${p.pos}" step="any" onchange="updateVia(${i},'pos',this.value)" placeholder="位置"></td>
+      <td><input type="number" value="${vcVal}" step="any" ${vcReadonly} onchange="updateVia(${i},'vc',this.value)" placeholder="${isFirst||isLast?'固定为 0':'留空=自动'}"></td>
+      <td>${(!isFirst&&!isLast)?`<button class="btn btn-danger btn-sm" onclick="removeVia(${i})">删</button>`:'<span style="color:#334155">—</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function updateVia(i, field, val) {
+  if (field === 'pos') viaPoints[i].pos = parseFloat(val);
+  else viaPoints[i].vc = val.trim() === '' ? null : parseFloat(val);
+}
+
+function addViaPoint() {
+  const last = viaPoints[viaPoints.length - 1];
+  const prev = viaPoints[viaPoints.length - 2];
+  viaPoints.splice(viaPoints.length - 1, 0, { pos: (prev.pos + last.pos) / 2, vc: null });
+  renderViaTable();
+}
+
+function removeVia(i) {
+  if (viaPoints.length <= 3) return;
+  viaPoints.splice(i, 1);
+  renderViaTable();
+}
+
+function calcMultiSeg() {
+  setErr('m_err', '');
+  const vmax = rv('m_vmax'), acc = rv('m_acc');
+  if (isNaN(vmax)||isNaN(acc)||vmax<=0||acc<=0) { setErr('m_err','请输入有效公共参数'); return; }
+
+  // Sync values from DOM
+  document.querySelectorAll('#via_tbody tr').forEach((row, i) => {
+    const inputs = row.querySelectorAll('input');
+    viaPoints[i].pos = parseFloat(inputs[0].value) || 0;
+    const vcv = inputs[1].value.trim();
+    viaPoints[i].vc = (i===0||i===viaPoints.length-1) ? 0 : (vcv===''?null:parseFloat(vcv));
+  });
+
+  const pts = viaPoints;
+  if (pts.length < 2) { setErr('m_err','至少需要 2 个点'); return; }
+
+  // Build segments: for each adjacent pair compute entry/exit velocities
+  // First/last = 0, midpoints use user value or auto (blend velocity)
+  const n = pts.length;
+  const vAt = new Array(n).fill(0); // velocity at each via point
+  vAt[0] = 0; vAt[n-1] = 0;
+
+  // Auto blend: max velocity at via point i such that:
+  //   decel from vAt[i] to vAt[i+1] is feasible in segment i+1
+  //   and accel from vAt[i-1] to vAt[i] is feasible in segment i-1
+  for (let i = 1; i < n-1; i++) {
+    if (pts[i].vc !== null && !isNaN(pts[i].vc)) {
+      vAt[i] = Math.min(pts[i].vc, vmax);
+    }
+  }
+
+  // For auto points, compute max blend using backward pass then forward pass
+  // Forward: max exit vel at i given entry vel at i-1
+  const vfwd = new Array(n).fill(vmax);
+  vfwd[0] = vAt[0];
+  for (let i = 1; i < n; i++) {
+    const d = Math.abs(pts[i].pos - pts[i-1].pos);
+    if (pts[i].vc !== null && !isNaN(pts[i].vc)) { vfwd[i] = Math.min(pts[i].vc, vmax); continue; }
+    // Max v1 achievable: v1² ≤ v0² + 2*a*d → v1 ≤ sqrt(v0²+2ad)
+    vfwd[i] = Math.min(vmax, Math.sqrt(vfwd[i-1]*vfwd[i-1] + 2*acc*d));
+  }
+  // Backward: max entry vel at i given exit vel at i+1
+  const vbwd = new Array(n).fill(vmax);
+  vbwd[n-1] = vAt[n-1];
+  for (let i = n-2; i >= 0; i--) {
+    const d = Math.abs(pts[i+1].pos - pts[i].pos);
+    if (pts[i].vc !== null && !isNaN(pts[i].vc)) { vbwd[i] = Math.min(pts[i].vc, vmax); continue; }
+    vbwd[i] = Math.min(vmax, Math.sqrt(vbwd[i+1]*vbwd[i+1] + 2*acc*d));
+  }
+  for (let i = 0; i < n; i++) {
+    if (pts[i].vc !== null && !isNaN(pts[i].vc)) vAt[i] = Math.min(pts[i].vc, vmax);
+    else vAt[i] = Math.min(vfwd[i], vbwd[i]);
+  }
+
+  // Plan each segment
+  const segments = [];
+  let ok = true;
+  for (let i = 0; i < n-1; i++) {
+    const d = Math.abs(pts[i+1].pos - pts[i].pos);
+    const v0 = vAt[i], v1 = vAt[i+1];
+    const plan = trapPlan(d, vmax, acc, v0, v1);
+    if (!plan) { setErr('m_err', `第 ${i+1} 段规划失败（距离 ${d.toFixed(2)} mm 不足以完成速度衔接）`); ok=false; break; }
+    segments.push({ i, plan, d, v0, v1, posFrom: pts[i].pos, posTo: pts[i+1].pos });
+  }
+  if (!ok) return;
+
+  document.getElementById('m_result_card').style.display = '';
+  const resDiv = document.getElementById('m_seg_results');
+  const totalTime = segments.reduce((s, sg) => s + sg.plan.totalTime, 0);
+
+  resDiv.innerHTML = `<div style="margin-bottom:10px">${mkResult('总时间', fmt(totalTime,4), 's')}${mkResult('段数', segments.length, '')}</div>` +
+    segments.map(sg => `
+    <div class="seg-result">
+      <div class="seg-title">段 ${sg.i+1}：${fmt(sg.posFrom,2)} → ${fmt(sg.posTo,2)} mm（距离 ${fmt(sg.d,2)} mm）</div>
+      <div class="seg-row">
+        <div class="seg-kv">入口速度 <span>${fmt(sg.v0,3)} mm/s</span></div>
+        <div class="seg-kv">出口速度 <span>${fmt(sg.v1,3)} mm/s</span></div>
+        <div class="seg-kv">峰值速度 <span>${fmt(sg.plan.vpeak,3)} mm/s</span></div>
+        <div class="seg-kv">段时间 <span>${fmt(sg.plan.totalTime,4)} s</span></div>
+        <div class="seg-kv">类型 <span>${sg.plan.triangular?'三角形':'梯形'}</span></div>
+        <div class="seg-kv">连续性 <span class="badge badge-ok">C1</span></div>
+      </div>
+    </div>`).join('');
+
+  drawMultiCanvas(segments, totalTime);
+}
+
+function drawMultiCanvas(segments, totalTime) {
+  const canvas = document.getElementById('m_canvas');
+  const W = canvas.offsetWidth || 860;
+  canvas.width = W * devicePixelRatio;
+  canvas.height = 240 * devicePixelRatio;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const H = 240;
+  const PAD = { l:50, r:20, t:18, b:32 };
+  const cw = W - PAD.l - PAD.r, ch = H - PAD.t - PAD.b;
+
+  ctx.fillStyle = '#0a0f1e';
+  ctx.fillRect(0,0,W,H);
+  drawGrid(ctx, PAD, cw, ch);
+
+  // Combine all segments into unified timeline
+  const N = 600;
+  const vArr = [], xArr = [];
+  let xOffset = 0, tOffset = 0;
+  const tBreaks = [];
+  for (const sg of segments) {
+    tBreaks.push(tOffset);
+    tOffset += sg.plan.totalTime;
+    xOffset += sg.d; // accumulate but we'll recompute from state
+  }
+  tBreaks.push(tOffset);
+
+  let maxV = 0, maxX = 0;
+  // Pre-scan
+  for (let k = 0; k <= N; k++) {
+    const t = totalTime * k / N;
+    const st = multiState(segments, t);
+    maxV = Math.max(maxV, st.v);
+    maxX = Math.max(maxX, st.x);
+  }
+  if (maxV < 1e-9) maxV = 1;
+  if (maxX < 1e-9) maxX = 1;
+
+  // Draw x(t)
+  ctx.beginPath(); ctx.strokeStyle = '#34d399'; ctx.lineWidth = 1.5;
+  for (let k = 0; k <= N; k++) {
+    const t = totalTime * k / N;
+    const { x } = multiState(segments, t);
+    const px = PAD.l + (t / totalTime) * cw;
+    const py = PAD.t + ch - (x / maxX) * ch;
+    k === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+
+  // Draw v(t)
+  ctx.beginPath(); ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2;
+  for (let k = 0; k <= N; k++) {
+    const t = totalTime * k / N;
+    const { v } = multiState(segments, t);
+    const px = PAD.l + (t / totalTime) * cw;
+    const py = PAD.t + ch - (v / maxV) * ch;
+    k === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+
+  // Segment boundaries
+  ctx.setLineDash([4,4]); ctx.strokeStyle = '#334155'; ctx.lineWidth = 1;
+  for (let i = 1; i < tBreaks.length - 1; i++) {
+    const px = PAD.l + (tBreaks[i] / totalTime) * cw;
+    ctx.beginPath(); ctx.moveTo(px, PAD.t); ctx.lineTo(px, PAD.t + ch); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  drawAxes(ctx, PAD, cw, ch, totalTime, maxV, 's', 'mm/s');
+}
+
+function multiState(segments, t) {
+  let elapsed = 0, xOff = 0;
+  for (const sg of segments) {
+    if (t <= elapsed + sg.plan.totalTime + 1e-12) {
+      const st = trapState(sg.plan.phases, t - elapsed);
+      return { v: st.v, a: st.a, x: xOff + st.x };
+    }
+    elapsed += sg.plan.totalTime;
+    xOff += sg.d;
+  }
+  const last = segments[segments.length-1];
+  return { v: last.v1, a: 0, x: xOff };
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Drawing helpers
+// ══════════════════════════════════════════════════════════════════════════════
+function drawGrid(ctx, PAD, cw, ch) {
+  ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 5; i++) {
+    const y = PAD.t + i * ch / 5;
+    ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(PAD.l + cw, y); ctx.stroke();
+  }
+  for (let i = 0; i <= 8; i++) {
+    const x = PAD.l + i * cw / 8;
+    ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, PAD.t + ch); ctx.stroke();
+  }
+}
+
+function drawAxes(ctx, PAD, cw, ch, maxT, maxV, tUnit, vUnit) {
+  ctx.fillStyle = '#475569'; ctx.font = '10px Consolas, monospace';
+  for (let i = 0; i <= 5; i++) {
+    const t = maxT * i / 5;
+    const x = PAD.l + i * cw / 5;
+    ctx.textAlign = 'center';
+    ctx.fillText(fmt(t,2) + tUnit, x, PAD.t + ch + 18);
+  }
+  for (let i = 0; i <= 4; i++) {
+    const v = maxV * (4 - i) / 4;
+    const y = PAD.t + i * ch / 4;
+    ctx.textAlign = 'right';
+    ctx.fillText(fmt(v,1), PAD.l - 4, y + 4);
+  }
+}
+
+function drawProfileCanvas(ctx, W, H, phases, totalTime, showAcc) {
+  const PAD = { l:50, r:20, t:18, b:32 };
+  const cw = W - PAD.l - PAD.r, ch = H - PAD.t - PAD.b;
+
+  ctx.fillStyle = '#0a0f1e'; ctx.fillRect(0,0,W,H);
+  drawGrid(ctx, PAD, cw, ch);
+
+  const N = 500;
+  let maxV = 0, maxX = 0, maxA = 0;
+  for (let k = 0; k <= N; k++) {
+    const t = totalTime * k / N;
+    const st = trapState(phases, t);
+    maxV = Math.max(maxV, Math.abs(st.v));
+    maxX = Math.max(maxX, st.x);
+    maxA = Math.max(maxA, Math.abs(st.a));
+  }
+  if (maxV < 1e-9) maxV = 1;
+  if (maxX < 1e-9) maxX = 1;
+  if (maxA < 1e-9) maxA = 1;
+
+  const scale = v => PAD.t + ch - (v / maxV) * ch;
+
+  // x(t) – green
+  ctx.beginPath(); ctx.strokeStyle = '#34d399'; ctx.lineWidth = 1.5;
+  for (let k = 0; k <= N; k++) {
+    const t = totalTime * k / N;
+    const { x } = trapState(phases, t);
+    const px = PAD.l + (t / totalTime) * cw;
+    const py = PAD.t + ch - (x / maxX) * ch;
+    k === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+
+  // a(t) – amber (scaled to v range for visibility)
+  ctx.beginPath(); ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 1.5;
+  for (let k = 0; k <= N; k++) {
+    const t = totalTime * k / N;
+    const { a } = trapState(phases, t);
+    const px = PAD.l + (t / totalTime) * cw;
+    const py = PAD.t + ch - (a / maxA) * ch * 0.7 - ch * 0.15;
+    k === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+
+  // v(t) – blue
+  ctx.beginPath(); ctx.strokeStyle = '#3b82f6'; ctx.lineWidth = 2.5;
+  for (let k = 0; k <= N; k++) {
+    const t = totalTime * k / N;
+    const { v } = trapState(phases, t);
+    const px = PAD.l + (t / totalTime) * cw;
+    const py = scale(v);
+    k === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+
+  drawAxes(ctx, PAD, cw, ch, totalTime, maxV, 's', 'mm/s');
+}
+
+function drawSProfileCanvas(ctx, W, H, plan) {
+  const PAD = { l:50, r:20, t:18, b:32 };
+  const cw = W - PAD.l - PAD.r, ch = H - PAD.t - PAD.b;
+
+  ctx.fillStyle = '#0a0f1e'; ctx.fillRect(0,0,W,H);
+  drawGrid(ctx, PAD, cw, ch);
+
+  const N = 700, T = plan.totalTime;
+  let maxV=0, maxX=0, maxA=0, maxJ=0;
+  for (let k=0;k<=N;k++) {
+    const t=T*k/N, st=sState(plan.segs,t);
+    maxV=Math.max(maxV,Math.abs(st.v));
+    maxX=Math.max(maxX,st.x);
+    maxA=Math.max(maxA,Math.abs(st.a));
+    maxJ=Math.max(maxJ,Math.abs(st.j));
+  }
+  if(maxV<1e-9)maxV=1; if(maxX<1e-9)maxX=1; if(maxA<1e-9)maxA=1; if(maxJ<1e-9)maxJ=1;
+
+  // x – green
+  ctx.beginPath(); ctx.strokeStyle='#34d399'; ctx.lineWidth=1.5;
+  for(let k=0;k<=N;k++){const t=T*k/N,{x}=sState(plan.segs,t),px=PAD.l+(t/T)*cw,py=PAD.t+ch-(x/maxX)*ch;k===0?ctx.moveTo(px,py):ctx.lineTo(px,py);}
+  ctx.stroke();
+
+  // j – purple (scaled 50%)
+  ctx.beginPath(); ctx.strokeStyle='#a78bfa'; ctx.lineWidth=1;
+  for(let k=0;k<=N;k++){const t=T*k/N,{j}=sState(plan.segs,t),px=PAD.l+(t/T)*cw,py=PAD.t+ch-(j/maxJ)*ch*0.45-ch*0.05;k===0?ctx.moveTo(px,py):ctx.lineTo(px,py);}
+  ctx.stroke();
+
+  // a – amber
+  ctx.beginPath(); ctx.strokeStyle='#f59e0b'; ctx.lineWidth=1.5;
+  for(let k=0;k<=N;k++){const t=T*k/N,{a}=sState(plan.segs,t),px=PAD.l+(t/T)*cw,py=PAD.t+ch-(a/maxA)*ch*0.65-ch*0.1;k===0?ctx.moveTo(px,py):ctx.lineTo(px,py);}
+  ctx.stroke();
+
+  // v – blue
+  ctx.beginPath(); ctx.strokeStyle='#3b82f6'; ctx.lineWidth=2.5;
+  for(let k=0;k<=N;k++){const t=T*k/N,{v}=sState(plan.segs,t),px=PAD.l+(t/T)*cw,py=PAD.t+ch-(v/maxV)*ch;k===0?ctx.moveTo(px,py):ctx.lineTo(px,py);}
+  ctx.stroke();
+
+  // Segment boundaries
+  ctx.setLineDash([3,4]); ctx.strokeStyle='#2d3f5e'; ctx.lineWidth=1;
+  let el=0;
+  for(let i=0;i<plan.segs.length-1;i++){
+    el+=plan.segs[i].t;
+    if(plan.segs[i].t<1e-6) continue;
+    const px=PAD.l+(el/T)*cw;
+    ctx.beginPath(); ctx.moveTo(px,PAD.t); ctx.lineTo(px,PAD.t+ch); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  drawAxes(ctx, PAD, cw, ch, T, maxV, 's', 'mm/s');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+initViaPoints();
+calcTrapezoid();
+</script>
+</body>
+</html>
