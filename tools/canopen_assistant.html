@@ -114,6 +114,7 @@
 
     .hex-inp { font-family: 'Consolas', monospace !important; font-size: 1.1rem !important; letter-spacing: 0.1em; }
     .dec-box { font-family: 'Consolas', monospace; color: #94a3b8; font-size: 0.9rem; padding: 9px 12px; background: #0f172a; border-radius: 8px; min-width: 80px; text-align: right; border: 1px solid #1e293b; }
+    .sim-layout { display:grid; grid-template-columns:210px 1fr 164px; gap:20px; align-items:start; }
 
     .tip-box { background: #0f172a; border: 1px solid #1e3a5f; border-radius: 8px; padding: 12px 16px; font-size: 0.78rem; color: #64748b; line-height: 1.9; margin-top: 12px; }
     .tip-box code { font-family: 'Consolas', monospace; background: #0c2231; padding: 1px 5px; border-radius: 3px; color: #7dd3fc; }
@@ -123,7 +124,7 @@
 
     @media (max-width: 900px) {
       .page-header, .tabs, .tab-content { padding-left: 16px; padding-right: 16px; }
-      .grid-sdo, .grid-cw, .grid-2 { grid-template-columns: 1fr; }
+      .grid-sdo, .grid-cw, .grid-2, .sim-layout { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -311,6 +312,34 @@
       </div>
       <div id="sw-state"></div>
       <table class="bit-table" id="sw-bits"></table>
+    </div>
+  </div>
+
+  <!-- DS402 State Machine Simulation -->
+  <div class="card">
+    <div class="card-title">DS402 状态机模拟 — 控制字驱动状态转换</div>
+    <div class="sim-layout">
+      <div>
+        <div style="font-size:0.72rem;color:#475569;margin-bottom:8px;">当前模拟状态</div>
+        <div id="sim-badge" class="state-badge st-disabled" style="font-size:0.88rem;padding:7px 16px;margin-bottom:12px;">● Switch On Disabled</div>
+        <div style="font-size:0.72rem;color:#475569;margin-bottom:4px;">对应 Statusword</div>
+        <div id="sim-sw-val" style="font-family:'Consolas',monospace;font-size:1rem;font-weight:700;color:#94a3b8;">0x0240</div>
+      </div>
+      <div>
+        <div style="font-size:0.7rem;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">控制字命令分析</div>
+        <pre id="sim-hint" style="font-size:0.77rem;color:#64748b;line-height:1.8;font-family:'Consolas',monospace;background:#0f172a;padding:12px 14px;border-radius:8px;border:1px solid #1e293b;white-space:pre-wrap;margin:0;">—</pre>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button class="btn btn-primary" onclick="applyToStateMachine()">↻ 应用控制字</button>
+        <button onclick="injectFault()" style="padding:9px;border-radius:8px;border:none;background:#7f1d1d;color:#fca5a5;cursor:pointer;font-size:0.85rem;font-weight:600;font-family:inherit;">⚡ 注入故障</button>
+        <button onclick="resetSM()" style="padding:9px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#64748b;cursor:pointer;font-size:0.85rem;font-family:inherit;">↺ 重置状态机</button>
+      </div>
+    </div>
+    <div style="margin-top:16px;border-top:1px solid #1e293b;padding-top:14px;">
+      <div style="font-size:0.68rem;color:#475569;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">转换记录</div>
+      <div id="sim-log" style="font-family:'Consolas',monospace;font-size:0.76rem;line-height:2.2;">
+        <div style="color:#475569;">— 尚未发生转换 —</div>
+      </div>
     </div>
   </div>
 </div>
@@ -663,6 +692,7 @@ function updateCW() {
   const v = parseHex('cw-in');
   document.getElementById('cw-dec').textContent = v;
   renderBitTable('cw-bits', CW_BITS, v);
+  updateSimHint(v);
 }
 
 function updateSW() {
@@ -687,6 +717,112 @@ function updateSW() {
 function setCW(hex) {
   document.getElementById('cw-in').value = hex.toUpperCase();
   updateCW();
+  applyToStateMachine();
+}
+
+// ─── DS402 State Machine Simulation ──────────────────────────────────
+
+const SM_STATES = {
+  DISABLED:    { sw: 0x0240, name: 'Switch On Disabled', cls: 'st-disabled' },
+  READY:       { sw: 0x0231, name: 'Ready to Switch On', cls: 'st-ready'    },
+  SWITCHED_ON: { sw: 0x0233, name: 'Switched On',        cls: 'st-sw-on'    },
+  OP_ENABLED:  { sw: 0x0237, name: 'Operation Enabled',  cls: 'st-op-en'    },
+  QSTOP:       { sw: 0x0217, name: 'Quick Stop Active',  cls: 'st-qstop'    },
+  FAULT:       { sw: 0x0208, name: 'Fault',              cls: 'st-fault'    },
+};
+
+// 有效转换表: 当前状态 → { 命令 → 下一状态 }
+const SM_TR = {
+  DISABLED:    { SHUTDOWN:   'READY'       },
+  READY:       { SWITCH_ON:  'SWITCHED_ON', DISABLE_VOLT:'DISABLED', QUICK_STOP:'DISABLED', SHUTDOWN:'READY' },
+  SWITCHED_ON: { ENABLE_OP:  'OP_ENABLED',  SHUTDOWN:'READY',        DISABLE_VOLT:'DISABLED', QUICK_STOP:'DISABLED' },
+  OP_ENABLED:  { SWITCH_ON:  'SWITCHED_ON', SHUTDOWN:'READY',        DISABLE_VOLT:'DISABLED', QUICK_STOP:'QSTOP' },
+  QSTOP:       { DISABLE_VOLT:'DISABLED',   ENABLE_OP:'OP_ENABLED'   },
+  FAULT:       { FAULT_RESET:'DISABLED'     },
+};
+
+let simState = 'DISABLED';
+let simLog   = [];
+
+function getCWCmd(cw) {
+  if ((cw & 0x80) && simState === 'FAULT') return { cmd:'FAULT_RESET',  label:'Fault Reset（bit7=1，仅从 Fault 状态起效）' };
+  if ((cw & 0x02) === 0)                   return { cmd:'DISABLE_VOLT', label:'Disable Voltage（bit1=0，最高优先级）' };
+  if ((cw & 0x06) === 0x02)                return { cmd:'QUICK_STOP',   label:'Quick Stop（bit2=0, bit1=1）' };
+  if ((cw & 0x87) === 0x06)                return { cmd:'SHUTDOWN',     label:'Shutdown（bit7=0, bit2:1=11, bit0=0）' };
+  if ((cw & 0x8F) === 0x0F)                return { cmd:'ENABLE_OP',    label:'Enable Operation（bit7=0, bit3:0=1111）' };
+  if ((cw & 0x8F) === 0x07)                return { cmd:'SWITCH_ON',    label:'Switch On / Disable Operation（bit3:0=0111）' };
+  return { cmd:'NONE', label:'无有效 DS402 命令' };
+}
+
+function applyToStateMachine() {
+  const cw = parseHex('cw-in');
+  const { cmd, label } = getCWCmd(cw);
+  const tr  = (SM_TR[simState] || {})[cmd];
+  const cwHex = '0x' + cw.toString(16).toUpperCase().padStart(4,'0');
+  let entry;
+
+  if (tr && tr !== simState) {
+    const from = SM_STATES[simState].name;
+    simState = tr;
+    entry = `✓ ${from} → ${SM_STATES[simState].name}  [CW=${cwHex}]`;
+  } else if (tr === simState) {
+    entry = `→ 保持 ${SM_STATES[simState].name}  [${cmd}, CW=${cwHex}]`;
+  } else {
+    entry = `✗ 无转换  ${SM_STATES[simState].name} 不接受 ${cmd}  [CW=${cwHex}]`;
+  }
+  simLog.unshift(entry);
+  if (simLog.length > 7) simLog.pop();
+  refreshSim(cw);
+}
+
+function injectFault() {
+  const prev = SM_STATES[simState].name;
+  simState = 'FAULT';
+  simLog.unshift(`⚡ 故障注入: ${prev} → Fault`);
+  if (simLog.length > 7) simLog.pop();
+  refreshSim(parseHex('cw-in'));
+}
+
+function resetSM() {
+  simState = 'DISABLED';
+  simLog.unshift('↺ 重置 → Switch On Disabled');
+  if (simLog.length > 7) simLog.pop();
+  refreshSim(parseHex('cw-in'));
+}
+
+function updateSimHint(cw) {
+  const el = document.getElementById('sim-hint');
+  if (!el) return;
+  const { cmd, label } = getCWCmd(cw);
+  const tr = (SM_TR[simState] || {})[cmd];
+  let txt = `命令: ${label}\n`;
+  if (tr && tr !== simState) {
+    txt += `转换: ${SM_STATES[simState].name}\n     → ${SM_STATES[tr].name}\n\n▶ 点击"↻ 应用控制字"执行`;
+  } else if (tr === simState) {
+    txt += `结果: 保持 ${SM_STATES[simState].name}`;
+  } else {
+    const valid = Object.entries(SM_TR[simState] || {})
+      .map(([c, s]) => `${c} → ${SM_STATES[s].name}`).join('\n      ');
+    txt += `无效: ${SM_STATES[simState].name} 不接受此命令\n有效:\n      ${valid || '—'}`;
+  }
+  el.textContent = txt;
+}
+
+function refreshSim(cw) {
+  const s = SM_STATES[simState];
+  const badge = document.getElementById('sim-badge');
+  if (badge) { badge.className = `state-badge ${s.cls}`; badge.textContent = `● ${s.name}`; }
+  const swValEl = document.getElementById('sim-sw-val');
+  if (swValEl) swValEl.textContent = '0x' + s.sw.toString(16).toUpperCase().padStart(4,'0');
+  document.getElementById('sw-in').value = s.sw.toString(16).toUpperCase().padStart(4,'0');
+  updateSW();
+  updateSimHint(cw);
+  const logEl = document.getElementById('sim-log');
+  if (logEl) {
+    logEl.innerHTML = simLog.length
+      ? simLog.map((l, i) => `<div style="color:${i===0?'#94a3b8':'#475569'}">${l}</div>`).join('')
+      : '<div style="color:#475569;">— 尚未发生转换 —</div>';
+  }
 }
 
 // ─── NMT ──────────────────────────────────────────────────────────
@@ -719,8 +855,8 @@ function copyText(id) {
 setSdoOp('read');
 renderOD(OD);
 updateCW();
-updateSW();
 generateNMT();
+refreshSim(parseHex('cw-in'));
 </script>
 </body>
 </html>
