@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CANopen 通信辅助工具</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; padding-bottom: 60px; }
+
+    .page-header { padding: 28px 40px 20px; border-bottom: 1px solid #1e293b; }
+    .page-title { font-size: 1.4rem; font-weight: 700; color: #f8fafc; display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+    .page-title-icon { width: 36px; height: 36px; background: linear-gradient(135deg, #0ea5e9, #3b82f6); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .page-subtitle { font-size: 0.8rem; color: #475569; padding-left: 46px; }
+
+    .tabs { display: flex; border-bottom: 1px solid #1e293b; padding: 0 40px; }
+    .tab-btn { padding: 12px 20px; font-size: 0.85rem; font-weight: 500; color: #64748b; background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.15s; white-space: nowrap; font-family: inherit; }
+    .tab-btn:hover { color: #94a3b8; }
+    .tab-btn.active { color: #3b82f6; border-bottom-color: #3b82f6; }
+
+    .tab-content { display: none; padding: 28px 40px; }
+    .tab-content.active { display: block; }
+
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px 24px; margin-bottom: 16px; }
+    .card-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; margin-bottom: 16px; }
+
+    label { font-size: 0.8rem; color: #94a3b8; font-weight: 500; display: block; margin-bottom: 6px; }
+    input[type="text"], input[type="number"], select {
+      background: #0f172a; border: 1px solid #334155; border-radius: 8px;
+      color: #f1f5f9; font-size: 0.9rem; padding: 9px 12px; width: 100%;
+      transition: border-color 0.15s; outline: none; font-family: inherit;
+    }
+    input:focus, select:focus { border-color: #3b82f6; }
+    select option { background: #1e293b; }
+
+    .radio-group { display: flex; gap: 8px; }
+    .radio-btn { flex: 1; padding: 9px 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #64748b; font-size: 0.85rem; cursor: pointer; text-align: center; transition: all 0.15s; user-select: none; }
+    .radio-btn.active { border-color: #3b82f6; background: #1e3a5f; color: #93c5fd; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid-sdo { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+    .grid-cw { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+    .btn { padding: 9px 18px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.15s; font-family: inherit; }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-ghost { background: none; border: 1px solid #334155; color: #64748b; font-size: 0.75rem; padding: 4px 10px; cursor: pointer; border-radius: 6px; font-family: inherit; }
+    .btn-ghost:hover { border-color: #475569; color: #94a3b8; }
+
+    /* CAN frame display */
+    .frame-label { font-size: 0.75rem; color: #64748b; margin-bottom: 8px; display: flex; justify-content: space-between; }
+    .frame-cobid { font-family: 'Consolas', monospace; font-size: 0.8rem; color: #94a3b8; margin-bottom: 8px; }
+    .frame-cobid .cob { color: #fbbf24; font-weight: 700; }
+    .frame-bytes { display: flex; gap: 4px; flex-wrap: wrap; }
+    .frame-byte { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 48px; }
+    .byte-val { background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 8px 4px; font-family: 'Consolas', monospace; font-size: 0.95rem; font-weight: 700; width: 48px; text-align: center; }
+    .byte-val.c-cmd  { color: #34d399; border-color: #065f46; }
+    .byte-val.c-idx  { color: #60a5fa; border-color: #1e3a5f; }
+    .byte-val.c-data { color: #fbbf24; border-color: #451a03; }
+    .byte-val.c-unk  { color: #475569; border-color: #1e293b; }
+    .byte-val.c-ack  { color: #a78bfa; border-color: #2d1f3f; }
+    .byte-lbl { font-size: 0.6rem; color: #475569; text-align: center; line-height: 1.3; }
+    .frame-copy { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+    .hex-str { font-family: 'Consolas', monospace; font-size: 0.75rem; color: #334155; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* OD table */
+    .od-toolbar { display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+    .od-search { flex: 1; min-width: 200px; max-width: 360px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: #f1f5f9; font-size: 0.875rem; padding: 8px 12px 8px 34px; outline: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 12px center; transition: border-color 0.15s; font-family: inherit; }
+    .od-search:focus { border-color: #3b82f6; }
+    .od-search::placeholder { color: #475569; }
+    .od-filter { background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: #94a3b8; font-size: 0.8rem; padding: 8px 12px; outline: none; font-family: inherit; }
+    .od-count { font-size: 0.75rem; color: #475569; margin-left: auto; }
+    .od-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .od-table thead th { text-align: left; padding: 10px 12px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #475569; border-bottom: 1px solid #1e293b; white-space: nowrap; }
+    .od-table tbody tr { border-bottom: 1px solid #1e293b; cursor: pointer; transition: background 0.1s; }
+    .od-table tbody tr:hover { background: #1e3a5f22; }
+    .od-table td { padding: 9px 12px; vertical-align: middle; }
+    .td-idx { font-family: 'Consolas', monospace; color: #60a5fa; font-size: 0.8rem; white-space: nowrap; }
+    .td-name { color: #e2e8f0; font-weight: 500; }
+    .td-type { font-family: 'Consolas', monospace; color: #a78bfa; font-size: 0.75rem; }
+    .acc-badge { font-size: 0.68rem; font-weight: 700; padding: 2px 7px; border-radius: 4px; }
+    .acc-RW { background: #1e3a5f; color: #93c5fd; }
+    .acc-RO { background: #1e293b; color: #64748b; }
+    .acc-WO { background: #3b2020; color: #f87171; }
+    .cat-badge { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
+    .cat-comm  { background: #1e3a5f; color: #7dd3fc; }
+    .cat-ds402 { background: #2d1f3f; color: #c4b5fd; }
+    .td-desc { color: #64748b; font-size: 0.78rem; }
+
+    /* Bit table */
+    .bit-table { width: 100%; border-collapse: collapse; }
+    .bit-table th { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #475569; padding: 7px 8px; text-align: left; border-bottom: 1px solid #1e293b; }
+    .bit-table td { padding: 6px 8px; border-bottom: 1px solid #0f172a; font-size: 0.8rem; vertical-align: middle; }
+    .bit-num { font-family: 'Consolas', monospace; color: #475569; font-size: 0.72rem; }
+    .bit-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+    .bit-dot.on  { background: #34d399; box-shadow: 0 0 5px #34d39955; }
+    .bit-dot.off { background: #334155; }
+    .bit-name { color: #94a3b8; font-size: 0.78rem; }
+    .bit-val-1 { font-family: 'Consolas', monospace; font-weight: 700; color: #34d399; }
+    .bit-val-0 { font-family: 'Consolas', monospace; font-weight: 700; color: #475569; }
+    .bit-desc-td { color: #64748b; font-size: 0.74rem; }
+
+    .state-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; margin-bottom: 14px; }
+    .st-op-en    { background: #065f46; color: #34d399; }
+    .st-sw-on    { background: #1e3a5f; color: #60a5fa; }
+    .st-ready    { background: #1e293b; color: #94a3b8; }
+    .st-fault    { background: #7f1d1d; color: #fca5a5; }
+    .st-disabled { background: #1e293b; color: #475569; }
+    .st-qstop    { background: #451a03; color: #fb923c; }
+
+    .preset-group { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .preset-btn { padding: 5px 12px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #94a3b8; font-size: 0.75rem; cursor: pointer; transition: all 0.15s; font-family: 'Consolas', monospace; }
+    .preset-btn:hover { border-color: #3b82f6; color: #93c5fd; background: #1e3a5f; }
+
+    .hex-inp { font-family: 'Consolas', monospace !important; font-size: 1.1rem !important; letter-spacing: 0.1em; }
+    .dec-box { font-family: 'Consolas', monospace; color: #94a3b8; font-size: 0.9rem; padding: 9px 12px; background: #0f172a; border-radius: 8px; min-width: 80px; text-align: right; border: 1px solid #1e293b; }
+
+    .tip-box { background: #0f172a; border: 1px solid #1e3a5f; border-radius: 8px; padding: 12px 16px; font-size: 0.78rem; color: #64748b; line-height: 1.9; margin-top: 12px; }
+    .tip-box code { font-family: 'Consolas', monospace; background: #0c2231; padding: 1px 5px; border-radius: 3px; color: #7dd3fc; }
+
+    .toast { position: fixed; bottom: 24px; right: 24px; background: #1e293b; border: 1px solid #334155; color: #34d399; padding: 10px 18px; border-radius: 8px; font-size: 0.85rem; display: none; z-index: 100; }
+    .toast.show { display: block; }
+
+    @media (max-width: 900px) {
+      .page-header, .tabs, .tab-content { padding-left: 16px; padding-right: 16px; }
+      .grid-sdo, .grid-cw, .grid-2 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="page-title">
+    <div class="page-title-icon">📡</div>
+    CANopen 通信辅助工具
+  </div>
+  <div class="page-subtitle">DS402 伺服驱动协议 · 对象字典 / SDO 指令 / 控制状态字 / NMT</div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="switchTab('sdo')">SDO 指令生成</button>
+  <button class="tab-btn" onclick="switchTab('od')">对象字典</button>
+  <button class="tab-btn" onclick="switchTab('cw')">控制 / 状态字</button>
+  <button class="tab-btn" onclick="switchTab('nmt')">NMT 指令</button>
+</div>
+
+<!-- ═══ SDO Tab ═══ -->
+<div class="tab-content active" id="tab-sdo">
+  <div class="grid-sdo">
+    <div>
+      <div class="card">
+        <div class="card-title">参数输入</div>
+        <div class="grid-2" style="margin-bottom:14px;">
+          <div>
+            <label>节点 ID (1–127)</label>
+            <input type="number" id="sdo-node" value="1" min="1" max="127">
+          </div>
+          <div>
+            <label>操作类型</label>
+            <div class="radio-group">
+              <div class="radio-btn" id="rb-read" onclick="setSdoOp('read')">读取</div>
+              <div class="radio-btn" id="rb-write" onclick="setSdoOp('write')">写入</div>
+            </div>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-bottom:14px;">
+          <div>
+            <label>索引 Index (hex)</label>
+            <input type="text" id="sdo-index" value="6040" maxlength="6" placeholder="6040" oninput="sanitizeHex(this)">
+          </div>
+          <div>
+            <label>子索引 Sub-Index</label>
+            <input type="number" id="sdo-sub" value="0" min="0" max="255">
+          </div>
+        </div>
+        <div id="write-fields" style="display:none;">
+          <div class="grid-2" style="margin-bottom:14px;">
+            <div>
+              <label>数据类型</label>
+              <select id="sdo-dtype">
+                <option value="u8">UINT8 (1 byte)</option>
+                <option value="i8">INT8 (1 byte)</option>
+                <option value="u16" selected>UINT16 (2 bytes)</option>
+                <option value="i16">INT16 (2 bytes)</option>
+                <option value="u32">UINT32 (4 bytes)</option>
+                <option value="i32">INT32 (4 bytes)</option>
+              </select>
+            </div>
+            <div>
+              <label>数值 (十进制或 0x…)</label>
+              <input type="text" id="sdo-value" value="15" placeholder="15 或 0x000F">
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="generateSdo()" style="width:100%;">生成 SDO 帧</button>
+      </div>
+
+      <div class="tip-box">
+        <strong style="color:#7dd3fc;">伺服上线流程（DS402）</strong><br>
+        1. 写 <code>0x06</code> → 0x6040 &nbsp;Shutdown<br>
+        2. 写 <code>0x07</code> → 0x6040 &nbsp;Switch On<br>
+        3. 写 <code>0x0F</code> → 0x6040 &nbsp;Enable Operation<br>
+        4. 写 <code>0x6060</code> 设置运行模式（PP=1, PV=3, CSP=8…）
+      </div>
+    </div>
+
+    <div>
+      <div class="card" id="sdo-placeholder">
+        <div style="text-align:center;padding:48px 0;color:#334155;">
+          <div style="font-size:2.5rem;margin-bottom:12px;">⚙</div>
+          <div style="font-size:0.85rem;">填写参数后点击"生成 SDO 帧"</div>
+          <div style="font-size:0.75rem;margin-top:6px;color:#1e3a5f;">也可在对象字典中点击条目自动填入</div>
+        </div>
+      </div>
+      <div class="card" id="sdo-result" style="display:none;">
+        <div class="card-title">生成结果</div>
+
+        <div style="margin-bottom:20px;">
+          <div class="frame-label">
+            <span style="color:#34d399;font-weight:600;">↑ 请求帧 &nbsp;Client → Server</span>
+          </div>
+          <div class="frame-cobid" id="req-cobid"></div>
+          <div class="frame-bytes" id="req-bytes"></div>
+          <div class="frame-copy">
+            <span class="hex-str" id="req-hexstr"></span>
+            <button class="btn-ghost" onclick="copyText('req-hexstr')">复制</button>
+          </div>
+        </div>
+
+        <div style="height:1px;background:#1e293b;margin-bottom:20px;"></div>
+
+        <div style="margin-bottom:16px;">
+          <div class="frame-label">
+            <span style="color:#64748b;font-weight:600;">↓ 响应帧 &nbsp;Server → Client（预期）</span>
+          </div>
+          <div class="frame-cobid" id="res-cobid"></div>
+          <div class="frame-bytes" id="res-bytes"></div>
+          <div class="frame-copy">
+            <span class="hex-str" id="res-hexstr"></span>
+            <button class="btn-ghost" onclick="copyText('res-hexstr')">复制</button>
+          </div>
+        </div>
+
+        <div class="tip-box" id="sdo-desc"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ OD Tab ═══ -->
+<div class="tab-content" id="tab-od">
+  <div class="od-toolbar">
+    <input class="od-search" id="od-search" type="text" placeholder="搜索名称、索引、描述..." oninput="filterOD()">
+    <select class="od-filter" id="od-cat" onchange="filterOD()">
+      <option value="">全部分类</option>
+      <option value="comm">通信轮廓 (0x1xxx)</option>
+      <option value="ds402">设备轮廓 DS402 (0x6xxx)</option>
+    </select>
+    <span class="od-count" id="od-count"></span>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden;">
+    <table class="od-table">
+      <thead>
+        <tr>
+          <th>Index</th><th>Sub</th><th>名称</th><th>类型</th><th>读写</th><th>分类</th><th>描述</th>
+        </tr>
+      </thead>
+      <tbody id="od-body"></tbody>
+    </table>
+  </div>
+  <div style="font-size:0.75rem;color:#475569;margin-top:8px;">点击任意行 → 自动填入 SDO 生成器</div>
+</div>
+
+<!-- ═══ CW/SW Tab ═══ -->
+<div class="tab-content" id="tab-cw">
+  <div class="grid-cw">
+    <div class="card">
+      <div class="card-title">控制字 Controlword — 0x6040</div>
+      <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:14px;">
+        <div style="flex:1;">
+          <label>十六进制值（不含 0x）</label>
+          <input type="text" id="cw-in" class="hex-inp" value="000F" maxlength="6" oninput="updateCW()">
+        </div>
+        <div>
+          <div style="font-size:0.72rem;color:#475569;margin-bottom:4px;">十进制</div>
+          <div class="dec-box" id="cw-dec">15</div>
+        </div>
+      </div>
+      <div class="preset-group">
+        <div class="preset-btn" onclick="setCW('0006')">0x0006 Shutdown</div>
+        <div class="preset-btn" onclick="setCW('0007')">0x0007 Switch On</div>
+        <div class="preset-btn" onclick="setCW('000F')">0x000F Enable Op</div>
+        <div class="preset-btn" onclick="setCW('0080')">0x0080 Fault Reset</div>
+        <div class="preset-btn" onclick="setCW('0002')">0x0002 Quick Stop</div>
+        <div class="preset-btn" onclick="setCW('0000')">0x0000 Disable Volt</div>
+      </div>
+      <table class="bit-table" id="cw-bits"></table>
+    </div>
+
+    <div class="card">
+      <div class="card-title">状态字 Statusword — 0x6041</div>
+      <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:14px;">
+        <div style="flex:1;">
+          <label>十六进制值（不含 0x）</label>
+          <input type="text" id="sw-in" class="hex-inp" value="0237" maxlength="6" oninput="updateSW()">
+        </div>
+        <div>
+          <div style="font-size:0.72rem;color:#475569;margin-bottom:4px;">十进制</div>
+          <div class="dec-box" id="sw-dec">567</div>
+        </div>
+      </div>
+      <div id="sw-state"></div>
+      <table class="bit-table" id="sw-bits"></table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ NMT Tab ═══ -->
+<div class="tab-content" id="tab-nmt">
+  <div style="max-width:580px;">
+    <div class="card">
+      <div class="card-title">NMT 帧生成</div>
+      <div class="grid-2" style="margin-bottom:14px;">
+        <div>
+          <label>节点 ID（0 = 广播所有节点）</label>
+          <input type="number" id="nmt-node" value="1" min="0" max="127" oninput="generateNMT()">
+        </div>
+        <div>
+          <label>指令</label>
+          <select id="nmt-cmd" onchange="generateNMT()">
+            <option value="01">Start Remote Node → Operational</option>
+            <option value="02">Stop Remote Node → Stopped</option>
+            <option value="80">Enter Pre-Operational</option>
+            <option value="81">Reset Node (Application)</option>
+            <option value="82">Reset Communication</option>
+          </select>
+        </div>
+      </div>
+      <div class="frame-cobid" id="nmt-cobid"></div>
+      <div class="frame-bytes" id="nmt-bytes"></div>
+      <div class="frame-copy" style="margin-top:10px;">
+        <span class="hex-str" id="nmt-hexstr"></span>
+        <button class="btn-ghost" onclick="copyText('nmt-hexstr')">复制</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">NMT 状态机</div>
+      <div style="font-size:0.8rem;color:#64748b;line-height:2.4;font-family:'Consolas',monospace;">
+        <span style="color:#34d399;">Pre-Operational</span><span style="color:#334155;"> ─[0x01]→ </span><span style="color:#60a5fa;">Operational</span><br>
+        <span style="color:#60a5fa;">Operational</span><span style="color:#334155;">     ─[0x02]→ </span><span style="color:#f87171;">Stopped</span><br>
+        <span style="color:#60a5fa;">Operational</span><span style="color:#334155;">     ─[0x80]→ </span><span style="color:#34d399;">Pre-Operational</span><br>
+        <span style="color:#f87171;">Stopped</span><span style="color:#334155;">         ─[0x80]→ </span><span style="color:#34d399;">Pre-Operational</span><br>
+        <span style="color:#94a3b8;">任意状态</span><span style="color:#334155;">       ─[0x81]→ </span><span style="color:#fbbf24;">Initialisation → Pre-Op</span><br>
+        <span style="color:#94a3b8;">任意状态</span><span style="color:#334155;">       ─[0x82]→ </span><span style="color:#fbbf24;">Comm Reset → Pre-Op</span>
+      </div>
+      <div class="tip-box" style="margin-top:12px;">
+        COB-ID 固定为 <code>0x000</code>，DLC = 2。节点 ID 填 <code>0x00</code> 为广播，无需 SDO 握手，驱动器直接执行。
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">已复制</div>
+
+<script>
+// ─── Object Dictionary ───────────────────────────────────────────
+const OD = [
+  // Communication Profile
+  {idx:0x1000,sub:0,name:'Device Type',          type:'UINT32',acc:'RO',cat:'comm',desc:'设备类型标识符，伺服驱动通常为 0x00020192'},
+  {idx:0x1001,sub:0,name:'Error Register',        type:'UINT8', acc:'RO',cat:'comm',desc:'错误寄存器位图：Bit0=通用, Bit3=电压, Bit4=温度, Bit7=厂商'},
+  {idx:0x1003,sub:0,name:'Pre-defined Error Field',type:'UINT8',acc:'RW',cat:'comm',desc:'错误历史条目数，写 0 可清除历史记录'},
+  {idx:0x1008,sub:0,name:'Device Name',           type:'STRING',acc:'RO',cat:'comm',desc:'厂商设备名称字符串'},
+  {idx:0x100C,sub:0,name:'Guard Time',            type:'UINT16',acc:'RW',cat:'comm',desc:'节点守护时间 (ms)，0=禁用'},
+  {idx:0x100D,sub:0,name:'Life Time Factor',      type:'UINT8', acc:'RW',cat:'comm',desc:'生命时间因子，超时 = Guard Time × Factor'},
+  {idx:0x1014,sub:0,name:'COB-ID EMCY',           type:'UINT32',acc:'RW',cat:'comm',desc:'紧急消息 COB-ID，默认 0x80 + Node-ID'},
+  {idx:0x1017,sub:0,name:'Producer Heartbeat Time',type:'UINT16',acc:'RW',cat:'comm',desc:'心跳时间 (ms)，0=禁用心跳'},
+  {idx:0x1018,sub:1,name:'Identity: Vendor ID',   type:'UINT32',acc:'RO',cat:'comm',desc:'厂商 ID（CiA 注册）'},
+  {idx:0x1018,sub:2,name:'Identity: Product Code', type:'UINT32',acc:'RO',cat:'comm',desc:'产品代码'},
+  {idx:0x1018,sub:3,name:'Identity: Revision',    type:'UINT32',acc:'RO',cat:'comm',desc:'固件版本号'},
+  {idx:0x1018,sub:4,name:'Identity: Serial No.',  type:'UINT32',acc:'RO',cat:'comm',desc:'序列号'},
+  {idx:0x1200,sub:1,name:'SDO Server COB-ID Rx',  type:'UINT32',acc:'RO',cat:'comm',desc:'SDO 接收 COB-ID，默认 0x600 + Node-ID'},
+  {idx:0x1200,sub:2,name:'SDO Server COB-ID Tx',  type:'UINT32',acc:'RO',cat:'comm',desc:'SDO 发送 COB-ID，默认 0x580 + Node-ID'},
+  {idx:0x1400,sub:1,name:'RPDO1 COB-ID',          type:'UINT32',acc:'RW',cat:'comm',desc:'RPDO1 接收 COB-ID，默认 0x200 + Node-ID'},
+  {idx:0x1400,sub:2,name:'RPDO1 Transmission Type',type:'UINT8',acc:'RW',cat:'comm',desc:'0=同步非周期, 1~240=同步周期, 254=事件异步, 255=远程触发'},
+  {idx:0x1600,sub:0,name:'RPDO1 Mapping Count',   type:'UINT8', acc:'RW',cat:'comm',desc:'RPDO1 映射对象数量（修改前需先禁用 PDO）'},
+  {idx:0x1800,sub:1,name:'TPDO1 COB-ID',          type:'UINT32',acc:'RW',cat:'comm',desc:'TPDO1 发送 COB-ID，默认 0x180 + Node-ID'},
+  {idx:0x1800,sub:2,name:'TPDO1 Transmission Type',type:'UINT8',acc:'RW',cat:'comm',desc:'TPDO1 传输类型，同 RPDO'},
+  {idx:0x1A00,sub:0,name:'TPDO1 Mapping Count',   type:'UINT8', acc:'RW',cat:'comm',desc:'TPDO1 映射对象数量'},
+  // DS402
+  {idx:0x6040,sub:0,name:'Controlword',           type:'UINT16',acc:'RW',cat:'ds402',desc:'控制字，驱动状态机控制，见"控制/状态字"标签页'},
+  {idx:0x6041,sub:0,name:'Statusword',            type:'UINT16',acc:'RO',cat:'ds402',desc:'状态字，反映驱动当前状态，见"控制/状态字"标签页'},
+  {idx:0x6060,sub:0,name:'Modes of Operation',    type:'INT8',  acc:'RW',cat:'ds402',desc:'操作模式：1=PP, 3=PV, 4=TQ, 6=HM, 7=IP, 8=CSP, 9=CSV, 10=CST'},
+  {idx:0x6061,sub:0,name:'Modes of Operation Display',type:'INT8',acc:'RO',cat:'ds402',desc:'当前生效的操作模式（只读反馈）'},
+  {idx:0x6062,sub:0,name:'Position Demand Value', type:'INT32', acc:'RO',cat:'ds402',desc:'位置给定值（插补器输出，用户单位）'},
+  {idx:0x6063,sub:0,name:'Position Actual Internal',type:'INT32',acc:'RO',cat:'ds402',desc:'编码器内部位置实际值（编码器增量）'},
+  {idx:0x6064,sub:0,name:'Position Actual Value', type:'INT32', acc:'RO',cat:'ds402',desc:'位置实际值（用户单位）'},
+  {idx:0x6065,sub:0,name:'Following Error Window',type:'UINT32',acc:'RW',cat:'ds402',desc:'跟踪误差窗口，超出触发故障'},
+  {idx:0x6067,sub:0,name:'Position Window',       type:'UINT32',acc:'RW',cat:'ds402',desc:'位置到达判断窗口（Target Reached 置位条件）'},
+  {idx:0x6068,sub:0,name:'Position Window Time',  type:'UINT16',acc:'RW',cat:'ds402',desc:'位置窗口保持时间 (ms)，满足后才置 Target Reached'},
+  {idx:0x606B,sub:0,name:'Velocity Demand Value', type:'INT32', acc:'RO',cat:'ds402',desc:'速度给定值（用户单位）'},
+  {idx:0x606C,sub:0,name:'Velocity Actual Value', type:'INT32', acc:'RO',cat:'ds402',desc:'速度实际值（用户单位/s）'},
+  {idx:0x6071,sub:0,name:'Target Torque',         type:'INT16', acc:'RW',cat:'ds402',desc:'目标转矩，单位为额定转矩 0.1%（1000 = 100%）'},
+  {idx:0x6072,sub:0,name:'Max Torque',            type:'UINT16',acc:'RW',cat:'ds402',desc:'最大转矩限制（额定转矩 0.1%）'},
+  {idx:0x6073,sub:0,name:'Max Current',           type:'UINT16',acc:'RW',cat:'ds402',desc:'最大电流限制（额定电流 0.1%）'},
+  {idx:0x6075,sub:0,name:'Motor Rated Current',   type:'UINT32',acc:'RO',cat:'ds402',desc:'电机额定电流 (mA)'},
+  {idx:0x6076,sub:0,name:'Motor Rated Torque',    type:'UINT32',acc:'RO',cat:'ds402',desc:'电机额定转矩 (mN·m)'},
+  {idx:0x6077,sub:0,name:'Torque Actual Value',   type:'INT16', acc:'RO',cat:'ds402',desc:'转矩实际值（额定转矩 0.1%）'},
+  {idx:0x6078,sub:0,name:'Current Actual Value',  type:'INT16', acc:'RO',cat:'ds402',desc:'电流实际值（额定电流 0.1%）'},
+  {idx:0x607A,sub:0,name:'Target Position',       type:'INT32', acc:'RW',cat:'ds402',desc:'目标位置（PP 模式，用户单位）'},
+  {idx:0x607C,sub:0,name:'Home Offset',           type:'INT32', acc:'RW',cat:'ds402',desc:'回零偏置，回零完成后叠加到位置坐标'},
+  {idx:0x607D,sub:1,name:'Min Position Limit',    type:'INT32', acc:'RW',cat:'ds402',desc:'软件最小位置限制（超出触发内部限制）'},
+  {idx:0x607D,sub:2,name:'Max Position Limit',    type:'INT32', acc:'RW',cat:'ds402',desc:'软件最大位置限制'},
+  {idx:0x6080,sub:0,name:'Max Motor Speed',       type:'UINT32',acc:'RW',cat:'ds402',desc:'电机最大转速 (rpm)'},
+  {idx:0x6081,sub:0,name:'Profile Velocity',      type:'UINT32',acc:'RW',cat:'ds402',desc:'轮廓速度（PP/PV 模式目标速度，用户单位）'},
+  {idx:0x6082,sub:0,name:'End Velocity',          type:'UINT32',acc:'RW',cat:'ds402',desc:'到达目标时的终止速度，通常为 0'},
+  {idx:0x6083,sub:0,name:'Profile Acceleration',  type:'UINT32',acc:'RW',cat:'ds402',desc:'轮廓加速度（用户单位/s²）'},
+  {idx:0x6084,sub:0,name:'Profile Deceleration',  type:'UINT32',acc:'RW',cat:'ds402',desc:'轮廓减速度（用户单位/s²）'},
+  {idx:0x6085,sub:0,name:'Quick Stop Deceleration',type:'UINT32',acc:'RW',cat:'ds402',desc:'快速停止减速度'},
+  {idx:0x6086,sub:0,name:'Motion Profile Type',   type:'INT16', acc:'RW',cat:'ds402',desc:'运动轮廓：0=梯形，3=S曲线（厂商相关）'},
+  {idx:0x6087,sub:0,name:'Torque Slope',          type:'UINT32',acc:'RW',cat:'ds402',desc:'转矩斜率（TQ 模式，额定转矩 0.1%/s）'},
+  {idx:0x608F,sub:1,name:'Encoder Increments',    type:'UINT32',acc:'RO',cat:'ds402',desc:'位置编码器增量数（每电机转）'},
+  {idx:0x608F,sub:2,name:'Encoder Motor Revolutions',type:'UINT32',acc:'RO',cat:'ds402',desc:'对应电机转数（通常为 1）'},
+  {idx:0x6091,sub:1,name:'Gear Ratio: Motor Rev', type:'UINT32',acc:'RW',cat:'ds402',desc:'电机转数（齿轮比分子）'},
+  {idx:0x6091,sub:2,name:'Gear Ratio: Shaft Rev', type:'UINT32',acc:'RW',cat:'ds402',desc:'轴转数（齿轮比分母），比值 = 电机转数 / 轴转数'},
+  {idx:0x6092,sub:1,name:'Feed Constant: Feed',   type:'UINT32',acc:'RW',cat:'ds402',desc:'进给量（直线轴，每轴转对应的用户单位，如 μm）'},
+  {idx:0x6092,sub:2,name:'Feed Constant: Shaft Rev',type:'UINT32',acc:'RW',cat:'ds402',desc:'进给对应的轴转数'},
+  {idx:0x6098,sub:0,name:'Homing Method',         type:'INT8',  acc:'RW',cat:'ds402',desc:'回零方式：1–14=限位开关, 17–30=原点开关, 33–34=当前位置置零'},
+  {idx:0x6099,sub:1,name:'Homing Speed: Switch',  type:'UINT32',acc:'RW',cat:'ds402',desc:'回零搜索开关速度（用户单位）'},
+  {idx:0x6099,sub:2,name:'Homing Speed: Zero',    type:'UINT32',acc:'RW',cat:'ds402',desc:'回零搜索零脉冲速度（用户单位）'},
+  {idx:0x609A,sub:0,name:'Homing Acceleration',   type:'UINT32',acc:'RW',cat:'ds402',desc:'回零加减速度（用户单位/s²）'},
+  {idx:0x60B0,sub:0,name:'Position Offset',       type:'INT32', acc:'RW',cat:'ds402',desc:'位置偏置（CSP 模式叠加到指令位置）'},
+  {idx:0x60B1,sub:0,name:'Velocity Offset',       type:'INT32', acc:'RW',cat:'ds402',desc:'速度前馈偏置（CSP/CSV 模式）'},
+  {idx:0x60B2,sub:0,name:'Torque Offset',         type:'INT16', acc:'RW',cat:'ds402',desc:'转矩前馈偏置（CSP/CSV/CST 模式）'},
+  {idx:0x60C2,sub:1,name:'Interpolation Time Value',type:'UINT8',acc:'RW',cat:'ds402',desc:'插补周期值（配合 Sub2 使用，周期 = Value × 10^Index ms）'},
+  {idx:0x60C2,sub:2,name:'Interpolation Time Index',type:'INT8', acc:'RW',cat:'ds402',desc:'插补周期指数，通常 -3（ms 级别）'},
+  {idx:0x60F4,sub:0,name:'Following Error Actual', type:'INT32', acc:'RO',cat:'ds402',desc:'跟踪误差实际值（用户单位）'},
+  {idx:0x60FF,sub:0,name:'Target Velocity',        type:'INT32', acc:'RW',cat:'ds402',desc:'目标速度（PV/CSV 模式，用户单位）'},
+  {idx:0x6502,sub:0,name:'Supported Drive Modes',  type:'UINT32',acc:'RO',cat:'ds402',desc:'支持的操作模式位图：Bit0=PP, Bit2=PV, Bit3=TQ, Bit5=HM, Bit7=CSP, Bit8=CSV, Bit9=CST'},
+];
+
+// ─── Bit definitions ─────────────────────────────────────────────
+const CW_BITS = [
+  {b:0,  name:'Switch On',         desc:'上电允许'},
+  {b:1,  name:'Enable Voltage',    desc:'母线电压使能'},
+  {b:2,  name:'Quick Stop',        desc:'快速停止（1=正常运行，0=触发 QS）'},
+  {b:3,  name:'Enable Operation',  desc:'使能运行'},
+  {b:4,  name:'Op. Mode Specific', desc:'PP: New Set Point | HM: Homing Start | IP: Enable IP'},
+  {b:5,  name:'Op. Mode Specific', desc:'PP: Change Set Immediately | HM: —'},
+  {b:6,  name:'Op. Mode Specific', desc:'PP: Abs(0) / Rel(1) | HM: —'},
+  {b:7,  name:'Fault Reset',       desc:'故障复位（上升沿触发）'},
+  {b:8,  name:'Halt',              desc:'暂停（1=停止运动，0=继续）'},
+  {b:9,  name:'Op. Mode Specific', desc:'PV: 速度限制参考切换'},
+  {b:10, name:'Reserved',          desc:'保留'},
+  {b:11, name:'Mfr. Specific',     desc:'厂商自定义'},
+  {b:12, name:'Mfr. Specific',     desc:'厂商自定义'},
+  {b:13, name:'Mfr. Specific',     desc:'厂商自定义'},
+  {b:14, name:'Mfr. Specific',     desc:'厂商自定义'},
+  {b:15, name:'Mfr. Specific',     desc:'厂商自定义'},
+];
+
+const SW_BITS = [
+  {b:0,  name:'Ready to Switch On', desc:'就绪可上电'},
+  {b:1,  name:'Switched On',        desc:'已上电'},
+  {b:2,  name:'Operation Enabled',  desc:'运行使能'},
+  {b:3,  name:'Fault',              desc:'故障'},
+  {b:4,  name:'Voltage Enabled',    desc:'母线电压已就绪'},
+  {b:5,  name:'Quick Stop',         desc:'快速停止（0=QS 激活，1=正常）'},
+  {b:6,  name:'Switch On Disabled', desc:'上电禁止（初始化或故障后）'},
+  {b:7,  name:'Warning',            desc:'警告（不阻止运行）'},
+  {b:8,  name:'Mfr. Specific',      desc:'厂商自定义'},
+  {b:9,  name:'Remote',             desc:'通信控制中（1=SDO/PDO 指令有效）'},
+  {b:10, name:'Target Reached',     desc:'目标到达（PP/PV/TQ/HM 模式相关）'},
+  {b:11, name:'Internal Limit',     desc:'内部限制有效（位置/速度/转矩被限幅）'},
+  {b:12, name:'Op. Mode Specific',  desc:'PP: Set Point Ack | PV: Speed=0 | CSP: Following Err'},
+  {b:13, name:'Op. Mode Specific',  desc:'PP: Following Error | 其他保留'},
+  {b:14, name:'Mfr. Specific',      desc:'厂商自定义'},
+  {b:15, name:'Mfr. Specific',      desc:'厂商自定义'},
+];
+
+// ─── Helpers ─────────────────────────────────────────────────────
+const h2 = n => n.toString(16).padStart(2,'0').toUpperCase();
+
+function sanitizeHex(el) {
+  el.value = el.value.replace(/[^0-9a-fA-F]/g,'').toUpperCase();
+}
+
+function parseNum(str) {
+  str = str.trim();
+  if (/^0x/i.test(str)) return parseInt(str, 16);
+  if (/^[0-9a-f]+$/i.test(str) && /[a-f]/i.test(str)) return parseInt(str, 16);
+  return parseInt(str, 10);
+}
+
+// ─── Tabs ─────────────────────────────────────────────────────────
+const TAB_IDS = ['sdo','od','cw','nmt'];
+function switchTab(id) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', TAB_IDS[i]===id));
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-'+id).classList.add('active');
+}
+
+// ─── SDO ─────────────────────────────────────────────────────────
+let sdoOp = 'read';
+
+function setSdoOp(op) {
+  sdoOp = op;
+  document.getElementById('rb-read').classList.toggle('active', op==='read');
+  document.getElementById('rb-write').classList.toggle('active', op==='write');
+  document.getElementById('write-fields').style.display = op==='write' ? '' : 'none';
+}
+
+function buildFrameBytes(container, bytes, labels, colors) {
+  container.innerHTML = '';
+  bytes.forEach((b, i) => {
+    const div = document.createElement('div');
+    div.className = 'frame-byte';
+    const displayVal = (b === null) ? '??' : h2(b);
+    const cls = (b === null) ? 'c-unk' : (colors[i] || 'c-cmd');
+    div.innerHTML = `<div class="byte-val ${cls}">${displayVal}</div><div class="byte-lbl">${(labels[i]||'').replace(/\n/g,'<br>')}</div>`;
+    container.appendChild(div);
+  });
+}
+
+function generateSdo() {
+  const nodeId = Math.max(1, Math.min(127, parseInt(document.getElementById('sdo-node').value)||1));
+  const rawIdx = document.getElementById('sdo-index').value.replace(/^0x/i,'') || '0000';
+  const index  = parseInt(rawIdx, 16) || 0;
+  const sub    = Math.max(0, Math.min(255, parseInt(document.getElementById('sdo-sub').value)||0));
+  const idxL   = index & 0xFF;
+  const idxH   = (index >> 8) & 0xFF;
+
+  let reqBytes, reqLabels, reqColors, resBytes, resLabels, resColors, desc;
+
+  if (sdoOp === 'read') {
+    reqBytes  = [0x40, idxL, idxH, sub, 0x00, 0x00, 0x00, 0x00];
+    reqLabels = ['CMD\n(Rd Req)','Idx L','Idx H','Sub','—','—','—','—'];
+    reqColors = ['c-cmd','c-idx','c-idx','c-idx','c-unk','c-unk','c-unk','c-unk'];
+    resBytes  = [null, idxL, idxH, sub, null, null, null, null];
+    resLabels = ['CMD\n(??)', 'Idx L','Idx H','Sub','Data0','Data1','Data2','Data3'];
+    resColors = ['c-unk','c-idx','c-idx','c-idx','c-data','c-data','c-data','c-data'];
+    desc = `CMD 请求: 0x40 (SDO Upload Request)\n` +
+           `Index: 0x${h2(idxH)}${h2(idxL)}  Sub: 0x${h2(sub)}\n\n` +
+           `响应 CMD 字节含义：\n` +
+           `  0x4F = 返回 1 字节  (size=1)\n` +
+           `  0x4B = 返回 2 字节  (size=2)\n` +
+           `  0x43 = 返回 4 字节  (size=4)\n` +
+           `响应数据为小端序（低字节在前）`;
+  } else {
+    const dtype = document.getElementById('sdo-dtype').value;
+    const valStr = document.getElementById('sdo-value').value;
+    let val = parseNum(valStr);
+    if (isNaN(val)) val = 0;
+    const sizeMap = {u8:1,i8:1,u16:2,i16:2,u32:4,i32:4};
+    const size = sizeMap[dtype];
+    const cmdMap = {1:0x2F, 2:0x2B, 3:0x27, 4:0x23};
+    const cmd = cmdMap[size];
+    if (dtype==='i8'  && val<0) val = val & 0xFF;
+    if (dtype==='i16' && val<0) val = val & 0xFFFF;
+    if (dtype==='i32' && val<0) val = val >>> 0;
+    const dataBytes = [];
+    for (let i=0; i<4; i++) dataBytes.push((val >> (i*8)) & 0xFF);
+    reqBytes  = [cmd, idxL, idxH, sub, ...dataBytes];
+    reqLabels = ['CMD','Idx L','Idx H','Sub','D0','D1','D2','D3'];
+    reqColors = ['c-cmd','c-idx','c-idx','c-idx','c-data','c-data','c-data','c-data'];
+    resBytes  = [0x60, idxL, idxH, sub, 0x00, 0x00, 0x00, 0x00];
+    resLabels = ['CMD\n(ACK)','Idx L','Idx H','Sub','0x00','0x00','0x00','0x00'];
+    resColors = ['c-ack','c-idx','c-idx','c-idx','c-unk','c-unk','c-unk','c-unk'];
+    const typeStr = dtype.toUpperCase().replace('U','UINT').replace('I','INT');
+    desc = `CMD 请求: 0x${h2(cmd)} (SDO Download, ${size} byte${size>1?'s':''})\n` +
+           `Index: 0x${h2(idxH)}${h2(idxL)}  Sub: 0x${h2(sub)}\n` +
+           `数据: ${dataBytes.map(h2).join(' ')}  (${typeStr.replace('UINTNT','UINT')}, 小端序)\n\n` +
+           `响应 CMD: 0x60 表示写入成功（Abort = 0x80 + 4字节错误码）`;
+  }
+
+  const reqCob = 0x600 + nodeId;
+  const resCob = 0x580 + nodeId;
+  document.getElementById('req-cobid').innerHTML = `COB-ID: <span class="cob">0x${reqCob.toString(16).toUpperCase().padStart(3,'0')}</span>　DLC: 8`;
+  document.getElementById('res-cobid').innerHTML = `COB-ID: <span class="cob">0x${resCob.toString(16).toUpperCase().padStart(3,'0')}</span>　DLC: 8`;
+
+  buildFrameBytes(document.getElementById('req-bytes'), reqBytes, reqLabels, reqColors);
+  buildFrameBytes(document.getElementById('res-bytes'), resBytes, resLabels, resColors);
+
+  document.getElementById('req-hexstr').textContent = reqBytes.map(h2).join(' ');
+  document.getElementById('res-hexstr').textContent = sdoOp==='read'
+    ? '?? ' + [idxL,idxH,sub].map(h2).join(' ') + ' ?? ?? ?? ??  (响应数据取决于设备)'
+    : resBytes.map(b => b===null ? '??' : h2(b)).join(' ');
+  document.getElementById('sdo-desc').textContent = desc;
+
+  document.getElementById('sdo-result').style.display = '';
+  document.getElementById('sdo-placeholder').style.display = 'none';
+}
+
+// ─── Object Dictionary ────────────────────────────────────────────
+function renderOD(list) {
+  const tbody = document.getElementById('od-body');
+  tbody.innerHTML = '';
+  list.forEach(item => {
+    const tr = document.createElement('tr');
+    const idxStr = '0x' + item.idx.toString(16).toUpperCase().padStart(4,'0');
+    tr.innerHTML = `
+      <td class="td-idx">${idxStr}</td>
+      <td class="td-idx">${item.sub}</td>
+      <td class="td-name">${item.name}</td>
+      <td class="td-type">${item.type}</td>
+      <td><span class="acc-badge acc-${item.acc}">${item.acc}</span></td>
+      <td><span class="cat-badge cat-${item.cat}">${item.cat==='comm'?'通信':'DS402'}</span></td>
+      <td class="td-desc">${item.desc}</td>`;
+    tr.addEventListener('click', () => fillFromOD(item));
+    tbody.appendChild(tr);
+  });
+  document.getElementById('od-count').textContent = `${list.length} 条`;
+}
+
+function filterOD() {
+  const q   = document.getElementById('od-search').value.toLowerCase();
+  const cat = document.getElementById('od-cat').value;
+  const res = OD.filter(item => {
+    const matchCat = !cat || item.cat === cat;
+    const matchQ   = !q
+      || item.name.toLowerCase().includes(q)
+      || item.desc.toLowerCase().includes(q)
+      || item.idx.toString(16).includes(q.replace(/^0x/i,''))
+      || item.type.toLowerCase().includes(q);
+    return matchCat && matchQ;
+  });
+  renderOD(res);
+}
+
+function fillFromOD(item) {
+  switchTab('sdo');
+  document.getElementById('sdo-index').value = item.idx.toString(16).toUpperCase().padStart(4,'0');
+  document.getElementById('sdo-sub').value   = item.sub;
+  const dtMap = {UINT8:'u8',INT8:'i8',UINT16:'u16',INT16:'i16',UINT32:'u32',INT32:'i32'};
+  if (dtMap[item.type]) document.getElementById('sdo-dtype').value = dtMap[item.type];
+  setSdoOp(item.acc === 'RO' ? 'read' : 'read');
+}
+
+// ─── Controlword / Statusword ─────────────────────────────────────
+function renderBitTable(tableId, bits, val) {
+  const t = document.getElementById(tableId);
+  t.innerHTML = `<thead><tr><th>Bit</th><th></th><th>名称</th><th>值</th><th>说明</th></tr></thead>`;
+  const tbody = document.createElement('tbody');
+  bits.forEach(b => {
+    const v = (val >> b.b) & 1;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="bit-num">${b.b}</td>
+      <td><span class="bit-dot ${v?'on':'off'}"></span></td>
+      <td class="bit-name">${b.name}</td>
+      <td class="${v?'bit-val-1':'bit-val-0'}">${v}</td>
+      <td class="bit-desc-td">${b.desc}</td>`;
+    tbody.appendChild(tr);
+  });
+  t.appendChild(tbody);
+}
+
+function parseHex(id) {
+  return parseInt(document.getElementById(id).value.replace(/^0x/i,'') || '0', 16) || 0;
+}
+
+function updateCW() {
+  const v = parseHex('cw-in');
+  document.getElementById('cw-dec').textContent = v;
+  renderBitTable('cw-bits', CW_BITS, v);
+}
+
+function updateSW() {
+  const v = parseHex('sw-in');
+  document.getElementById('sw-dec').textContent = v;
+  renderBitTable('sw-bits', SW_BITS, v);
+  // State decode
+  const m = v & 0x006F;
+  let state, cls;
+  if      ((m & 0x006F) === 0x0027) { state='Operation Enabled';      cls='st-op-en'; }
+  else if ((m & 0x006F) === 0x0023) { state='Switched On';            cls='st-sw-on'; }
+  else if ((m & 0x006F) === 0x0021) { state='Ready to Switch On';     cls='st-ready'; }
+  else if ((m & 0x006F) === 0x0007) { state='Quick Stop Active';      cls='st-qstop'; }
+  else if ((m & 0x006F) === 0x000F) { state='Fault Reaction Active';  cls='st-fault'; }
+  else if ((m & 0x004F) === 0x0008) { state='Fault';                  cls='st-fault'; }
+  else if ((m & 0x004F) === 0x0040) { state='Switch On Disabled';     cls='st-disabled'; }
+  else if ((m & 0x004F) === 0x0000) { state='Not Ready to Switch On'; cls='st-disabled'; }
+  else                               { state='Unknown (0x'+m.toString(16).toUpperCase()+')'; cls='st-disabled'; }
+  document.getElementById('sw-state').innerHTML = `<div class="state-badge ${cls}">● ${state}</div>`;
+}
+
+function setCW(hex) {
+  document.getElementById('cw-in').value = hex.toUpperCase();
+  updateCW();
+}
+
+// ─── NMT ──────────────────────────────────────────────────────────
+function generateNMT() {
+  const nodeId = parseInt(document.getElementById('nmt-node').value) || 0;
+  const cmdHex = document.getElementById('nmt-cmd').value;
+  const cmd    = parseInt(cmdHex, 16);
+  const label  = document.getElementById('nmt-cmd').options[document.getElementById('nmt-cmd').selectedIndex].text;
+
+  document.getElementById('nmt-cobid').innerHTML =
+    `COB-ID: <span class="cob">0x000</span>　DLC: 2　— ${label}`;
+
+  const bytes  = [cmd, nodeId & 0x7F];
+  const labels = ['CMD', nodeId===0 ? 'NodeID\n(广播)' : 'NodeID'];
+  buildFrameBytes(document.getElementById('nmt-bytes'), bytes, labels, ['c-cmd','c-idx']);
+  document.getElementById('nmt-hexstr').textContent = bytes.map(h2).join(' ');
+}
+
+// ─── Copy ─────────────────────────────────────────────────────────
+function copyText(id) {
+  navigator.clipboard.writeText(document.getElementById(id).textContent.trim())
+    .then(() => {
+      const t = document.getElementById('toast');
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 1600);
+    });
+}
+
+// ─── Init ─────────────────────────────────────────────────────────
+setSdoOp('read');
+renderOD(OD);
+updateCW();
+updateSW();
+generateNMT();
+</script>
+</body>
+</html>
