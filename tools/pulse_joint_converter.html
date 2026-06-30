@@ -262,6 +262,36 @@
     </div>
   </div>
 
+  <!-- 速度转换区 -->
+  <div class="card">
+    <div class="card-title">速度转换</div>
+    <div class="convert-row">
+      <div class="field">
+        <label>电机端转速 (RPM)</label>
+        <input type="number" id="rpm_input" placeholder="输入电机转速" step="any">
+      </div>
+      <div class="convert-arrow">
+        <button class="btn btn-primary" onclick="rpmToDps()">→</button>
+        <button class="btn btn-secondary" onclick="dpsToRpm()">←</button>
+      </div>
+      <div class="field">
+        <label>关节端速度 (°/s)</label>
+        <input type="number" id="dps_input" placeholder="输入关节速度" step="any">
+      </div>
+    </div>
+
+    <div style="margin-top:20px; display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+      <div>
+        <label style="font-size:0.8rem;color:#94a3b8;">RPM → °/s 结果</label>
+        <div class="result-box" id="result_dps">—</div>
+      </div>
+      <div>
+        <label style="font-size:0.8rem;color:#94a3b8;">°/s → RPM 结果</label>
+        <div class="result-box" id="result_rpm">—</div>
+      </div>
+    </div>
+  </div>
+
   <!-- 公式说明 -->
   <div class="card">
     <div class="card-title">公式说明</div>
@@ -271,6 +301,12 @@
       <br><br>
       <strong>角度 → 脉冲：</strong><br>
       <code>pulse = (angle - angle_offset) / 360° × (PPR × N) × dir + offset</code>
+      <br><br>
+      <strong>RPM → °/s：</strong><br>
+      <code>dps = rpm / N × 360° / 60 × dir = rpm × 6 / N × dir</code>
+      <br><br>
+      <strong>°/s → RPM：</strong><br>
+      <code>rpm = dps × N / 6 × dir</code>
       <br><br>
       <strong>参数说明：</strong><br>
       PPR = 单圈脉冲数 &nbsp;|&nbsp; N = 减速比 &nbsp;|&nbsp; dir = ±1（方向极性）
@@ -318,9 +354,31 @@
     document.getElementById('pulse_input').value = Math.round(pulse);
   }
 
+  function rpmToDps() {
+    const p = getParams();
+    const rpm = parseFloat(document.getElementById('rpm_input').value);
+    if (isNaN(rpm)) { document.getElementById('result_dps').textContent = '请输入电机转速'; return; }
+    if (!p.gearRatio) { document.getElementById('result_dps').textContent = '参数无效'; return; }
+    const dps = rpm * 6 / p.gearRatio * p.dir;
+    document.getElementById('result_dps').textContent = dps.toFixed(6) + ' °/s';
+    document.getElementById('dps_input').value = dps.toFixed(6);
+  }
+
+  function dpsToRpm() {
+    const p = getParams();
+    const dps = parseFloat(document.getElementById('dps_input').value);
+    if (isNaN(dps)) { document.getElementById('result_rpm').textContent = '请输入关节速度'; return; }
+    if (!p.gearRatio) { document.getElementById('result_rpm').textContent = '参数无效'; return; }
+    const rpm = dps * p.gearRatio / 6 * p.dir;
+    document.getElementById('result_rpm').textContent = rpm.toFixed(6) + ' RPM';
+    document.getElementById('rpm_input').value = rpm.toFixed(6);
+  }
+
   // 回车快捷触发
   document.getElementById('pulse_input').addEventListener('keydown', e => { if (e.key === 'Enter') pulseToAngle(); });
   document.getElementById('angle_input').addEventListener('keydown', e => { if (e.key === 'Enter') angleToPulse(); });
+  document.getElementById('rpm_input').addEventListener('keydown', e => { if (e.key === 'Enter') rpmToDps(); });
+  document.getElementById('dps_input').addEventListener('keydown', e => { if (e.key === 'Enter') dpsToRpm(); });
 </script>
 </body>
 </html>
