@@ -223,6 +223,14 @@
   // 新增工具时在此列表追加一条即可
   const TOOLS = [
     {
+      name: '机器人 DH 三维建模',
+      desc: '三维显示 SDH / MDH 机器人模型，支持旋转轴、平移轴、角度 / 弧度及米 / 毫米切换，实时控制关节运动与查看末端位姿。默认 MDH、角度、毫米。',
+      file: 'tools/robot_dh_modeler.html',
+      icon: '🦾',
+      iconBg: 'linear-gradient(135deg,#0369a1,#0891b2)',
+      tags: ['机器人', 'DH', 'SDH', 'MDH', '三维', '关节'],
+    },
+    {
       name: '脉冲值 ↔ 关节位置转换',
       desc: '根据减速比、单圈脉冲数和方向极性，互相转换脉冲值与关节角度（度）。支持零点偏置配置。',
       file: 'tools/pulse_joint_converter.html',

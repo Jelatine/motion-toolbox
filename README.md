@@ -40,6 +40,16 @@ DS402 伺服协议与 CANopen 通信的全套调试辅助，包含四个功能�
 
 计算公式：`校准后减速比 = 当前减速比 × 运控反馈角度 ÷ 实测角度`
 
+### 5. 机器人 DH 三维建模
+
+- 支持标准 DH（SDH）和 Craig 改进 DH（MDH），默认 **MDH、角度、毫米**。
+- 编辑各关节的 a、α、d₀、θ₀、类型及运动上下限，支持添加和删除关节。
+- 旋转轴使用 θ = θ₀ + q，平移轴使用 d = d₀ + q；滑块、数值输入和往复播放实时驱动三维模型。
+- 支持角度 / 弧度、米 / 毫米切换，自动换算参数和关节范围，保持物理姿态。
+- 三维场景支持旋转、缩放、平移、适应模型，显示坐标系、关节轴和末端齐次变换矩阵。
+- SDH / MDH 切换按新约定解释当前参数，不是同一机器人参数的自动转换。页面内附有公式和混合关节示例。
+- 无外部依赖，直接打开 `tools/robot_dh_modeler.html` 即可离线使用。
+
 ## 快速开始
 
 无需安装任何依赖，直接用浏览器打开即可：
@@ -68,10 +78,16 @@ motion_toolbox/
 └── tools/
     ├── trajectory_planner.html  # 轨迹规划器
     ├── pulse_joint_converter.html  # 脉冲 / 关节换算器
-    └── canopen_assistant.html   # CANopen 通信辅助
+    ├── canopen_assistant.html   # CANopen 通信辅助
+    ├── robot_dh_modeler.html    # 机器人 DH 三维建模
+    ├── robot_dh_modeler.js      # 参数交互、关节运动与三维绘制
+    └── robot_dh_math.js         # SDH / MDH 正运动学
 ```
 
 ## 技术栈
+
+DH 正运动学验证：`node --test tests/robot_dh_math.test.js`。
+浏览器交互验证（需本机已安装 Playwright 和 Chromium）：`node tests/robot_dh_browser.cjs`，可在命令末尾传入 Playwright 模块路径；截图写入系统临时目录。
 
 - 纯原生 HTML / CSS / JavaScript，无任何外部依赖
 - HTML5 Canvas 实时绘图
