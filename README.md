@@ -57,6 +57,7 @@ DS402 伺服协议与 CANopen 通信的全套调试辅助，包含四个功能�
 - 支持角度 / 弧度、米 / 毫米切换，自动换算参数和关节范围，保持物理姿态。
 - 三维场景支持旋转、缩放、平移、适应模型，显示坐标系、关节轴和末端齐次变换矩阵。
 - SDH / MDH 切换按新约定解释当前参数，不是同一机器人参数的自动转换。页面内附有公式和混合关节示例。
+- 三维视图为右手坐标系：拇指指向关节 Z+，四指弯曲方向为 q 正方向。
 - 无外部依赖，直接打开 `tools/robot_dh_modeler.html` 即可离线使用。
 
 ## 快速开始
@@ -90,16 +91,12 @@ motion_toolbox/
     ├── canopen_assistant.html   # CANopen 通信辅助
     ├── joint_gear_ratio_calibrator.html  # 关节减速比校正
     ├── joint_angle_offset_calculator.html  # 关节零点偏移计算
-    ├── joint_angle_offset_math.js  # angle_offset 计算与列表解析
-    ├── robot_dh_modeler.html    # 机器人 DH 三维建模
-    ├── robot_dh_modeler.js      # 参数交互、关节运动与三维绘制
-    └── robot_dh_math.js         # SDH / MDH 正运动学
+    └── robot_dh_modeler.html    # 机器人 DH 三维建模
 ```
 
 ## 技术栈
 
-DH 正运动学验证：`node --test tests/robot_dh_math.test.js`。
-零点偏移计算验证：`node --test tests/joint_angle_offset_math.test.js`。
+每个工具都是单个 HTML 文件；单元测试直接读取 HTML 中的计算脚本块：`node --test tests/*.test.js`（DH 正运动学、零点偏移计算）。
 浏览器交互验证（需本机已安装 Playwright 和 Chromium）：`node tests/robot_dh_browser.cjs`，可在命令末尾传入 Playwright 模块路径；截图写入系统临时目录。
 
 - 纯原生 HTML / CSS / JavaScript，无任何外部依赖

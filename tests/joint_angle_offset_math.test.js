@@ -1,6 +1,8 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const M=require('../tools/joint_angle_offset_math.js');
+const fs=require('node:fs'),path=require('node:path');
+/* The tool is a single HTML file; evaluate its pure-math script block as a CommonJS module. */
+const M=(()=>{const html=fs.readFileSync(path.join(__dirname,'../tools/joint_angle_offset_calculator.html'),'utf8');const m={exports:{}};new Function('module',html.match(/<script id=offset-math>([\s\S]*?)<\/script>/)[1])(m);return m.exports;})();
 const PPR=131072,N=101;
 const toAngle=(pulse,c)=>(pulse-c.offset)/(PPR*N)*360*c.dir+c.angleOffset;
 const toPulse=(angle,c)=>(angle-c.angleOffset)/360*(PPR*N)*c.dir+c.offset;

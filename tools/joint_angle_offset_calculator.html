@@ -44,7 +44,25 @@ input{width:100%;min-height:42px;padding:9px 11px;border:1px solid var(--line);b
 <p class=note>同一物理位置的 pulse 不变，PPR、N、dir、offset 也不变，因此角度读数只随 angle_offset 平移；dir 只作用于脉冲项，不影响 Δ 的符号。<br>
 两种场景使用同一公式：<b>换板</b>时目标角度为换板前的读数；<b>墙面平行</b>时目标角度为原示教点角度，当前角度为调平后的读数，更新后机械臂在调平位置的读数等于原示教点，执行示教点即回到平行位置。<br>
 结果不做 ±180° 归一化，多圈关节可直接使用。</p></section>
-</main><script src="joint_angle_offset_math.js"></script><script>
+</main><script id=offset-math>
+/* angle = (pulse - offset) / (PPR × N) × 360° × dir + angle_offset
+   At a fixed pulse the reading shifts 1:1 with angle_offset, so making the
+   physical position that currently reads `current` read `target` instead needs
+   new angle_offset = angle_offset + (target - current). */
+(function (root) {
+  'use strict';
+  function offsetFor(angleOffset, target, current) {
+    const delta = target - current;
+    return {delta, angleOffset: angleOffset + delta};
+  }
+  const compute = rows => rows.map(r => offsetFor(r.angleOffset, r.target, r.current));
+  /* Accepts comma / whitespace / semicolon separated lists, including full-width separators. */
+  const parseList = text => String(text).trim().split(/[\s,;，；、]+/).filter(Boolean).map(Number);
+  const api = {offsetFor, compute, parseList};
+  if(typeof module!=='undefined'&&module.exports) module.exports=api;
+  else root.AngleOffsetMath=api;
+})(globalThis);
+</script><script>
 const MODES={
  swap:{target:'换板前角度',current:'换板后当前角度',note:'更新 angle_offset 后，新驱动板在同一位置读数应与换板前一致；请在机械臂不动的状态下核对各关节读数。'},
  wall:{target:'原示教点角度',current:'调平后当前角度',note:'<span class=warn>注意：angle_offset 是关节零点，修改后该关节的所有示教点都会同步平移，而不仅是这一个点。</span>更新后机械臂在调平位置应显示原示教点角度；未调整的关节 Δ 为 0。'}

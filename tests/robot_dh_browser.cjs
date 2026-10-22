@@ -44,6 +44,18 @@ const assert=require('node:assert/strict');
     await page.mouse.move(box.x+200,box.y+200);await page.mouse.down();await page.mouse.move(box.x+260,box.y+240);await page.mouse.up();
     assert.notEqual(await scene.evaluate(c=>c.toDataURL()),before);
     await page.mouse.wheel(0,150);await page.click('#fit');await page.click('#home-view');
+    // Screen basis (right, up, toward viewer) must form a right-handed frame, otherwise rotations look mirrored.
+    for(const view of [[0.75,0.48],[2.6,-0.3],[-1.2,1.2]]){
+      const det=await page.evaluate(([yaw,pitch])=>{camera.yaw=yaw;camera.pitch=pitch;const o=project([0,0,0]);
+        const [x,y,z]=[[1,0,0],[0,1,0],[0,0,1]].map(e=>{const p=project(e);return [(p[0]-o[0])/camera.scale,(o[1]-p[1])/camera.scale,p[2]-o[2]];});
+        return x[0]*(y[1]*z[2]-y[2]*z[1])-x[1]*(y[0]*z[2]-y[2]*z[0])+x[2]*(y[0]*z[1]-y[1]*z[0]);},view);
+      assert.ok(Math.abs(det-1)<1e-9,`view ${view} is not right-handed: det=${det}`);
+    }
+    // Looking down +Z, a positive J1 rotation must turn the arm counter-clockwise on screen.
+    const ccw=await page.evaluate(()=>{camera.yaw=0.75;camera.pitch=1.5;const angleOf=()=>{const o=project(M.origin(model.joints[0])),p=project(M.origin(model.joints[1]));return Math.atan2(o[1]-p[1],p[0]-o[0]);};
+      const r=rows[0],q0=r.q,a=angleOf();r.q=q0+0.2;update();const b=angleOf();r.q=q0;update();return Math.atan2(Math.sin(b-a),Math.cos(b-a));});
+    assert.ok(ccw>0.15&&ccw<0.25,`J1 +0.2 rad turned ${ccw} rad on screen`);
+    await page.click('#home-view');
     await page.screenshot({path:path.join(os.tmpdir(),'motion_toolbox_robot_dh_desktop.png'),fullPage:true});
     await page.setViewportSize({width:390,height:844});await page.click('#fit');
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));

@@ -1,6 +1,8 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const M=require('../tools/robot_dh_math.js');
+const fs=require('node:fs'),path=require('node:path');
+/* The tool is a single HTML file; evaluate its pure-math script block as a CommonJS module. */
+const M=(()=>{const html=fs.readFileSync(path.join(__dirname,'../tools/robot_dh_modeler.html'),'utf8');const m={exports:{}};new Function('module',html.match(/<script id="dh-math">([\s\S]*?)<\/script>/)[1])(m);return m.exports;})();
 const row=(overrides={})=>({type:'R',a:0,alpha:0,d:0,theta:0,q:0,...overrides});
 function near(actual,expected){assert.equal(actual.length,expected.length);actual.forEach((v,i)=>assert.ok(Math.abs(v-expected[i])<1e-10,`${i}: ${v} != ${expected[i]}`));}
 test('SDH planar two-link robot reaches analytic endpoint',()=>{
