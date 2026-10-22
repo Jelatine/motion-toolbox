@@ -40,7 +40,16 @@ DS402 伺服协议与 CANopen 通信的全套调试辅助，包含四个功能�
 
 计算公式：`校准后减速比 = 当前减速比 × 运控反馈角度 ÷ 实测角度`
 
-### 5. 机器人 DH 三维建模
+### 5. 关节零点偏移计算
+
+输入各关节当前 angle_offset 与同一物理位置的两组角度，计算要设置的新 angle_offset，支持 1–12 个关节、整列粘贴和一键复制结果。
+
+- **更换驱动板**：换板前记录角度，换板后输入当前角度；更新后新板在同一位置显示换板前的角度。
+- **示教点与墙面平行**：输入原示教点角度和手动调平后的当前角度；更新后执行原示教点即到达平行位置（该关节所有示教点会同步平移）。
+
+计算公式：`新 angle_offset = 当前 angle_offset + (目标角度 − 当前角度)`，由运控换算 `angle = (pulse − offset) / (PPR × N) × 360° × dir + angle_offset` 推得。
+
+### 6. 机器人 DH 三维建模
 
 - 支持标准 DH（SDH）和 Craig 改进 DH（MDH），默认 **MDH、角度、毫米**。
 - 编辑各关节的 a、α、d₀、θ₀、类型及运动上下限，支持添加和删除关节。
@@ -79,6 +88,9 @@ motion_toolbox/
     ├── trajectory_planner.html  # 轨迹规划器
     ├── pulse_joint_converter.html  # 脉冲 / 关节换算器
     ├── canopen_assistant.html   # CANopen 通信辅助
+    ├── joint_gear_ratio_calibrator.html  # 关节减速比校正
+    ├── joint_angle_offset_calculator.html  # 关节零点偏移计算
+    ├── joint_angle_offset_math.js  # angle_offset 计算与列表解析
     ├── robot_dh_modeler.html    # 机器人 DH 三维建模
     ├── robot_dh_modeler.js      # 参数交互、关节运动与三维绘制
     └── robot_dh_math.js         # SDH / MDH 正运动学
@@ -87,6 +99,7 @@ motion_toolbox/
 ## 技术栈
 
 DH 正运动学验证：`node --test tests/robot_dh_math.test.js`。
+零点偏移计算验证：`node --test tests/joint_angle_offset_math.test.js`。
 浏览器交互验证（需本机已安装 Playwright 和 Chromium）：`node tests/robot_dh_browser.cjs`，可在命令末尾传入 Playwright 模块路径；截图写入系统临时目录。
 
 - 纯原生 HTML / CSS / JavaScript，无任何外部依赖
