@@ -10,6 +10,7 @@ h1{color:#f8fafc;font-size:clamp(1.6rem,5vw,2rem);letter-spacing:-.02em}.subtitl
 .card{margin-bottom:18px;padding:24px;border:1px solid var(--line);border-radius:14px;background:rgba(30,41,59,.94);box-shadow:0 20px 48px rgba(2,6,23,.18)}
 h2{margin-bottom:18px;color:var(--dim);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase}
 .modes{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mode{display:flex;flex-direction:column;gap:6px;min-height:0;padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--field);color:var(--muted);text-align:left;font-weight:400}.mode b{color:var(--text);font-size:.9rem}.mode small{line-height:1.6}.mode:hover{background:#172033}.mode[aria-pressed=true]{border-color:var(--accent);background:rgba(245,158,11,.08);box-shadow:0 0 0 3px rgba(245,158,11,.12)}
+.bulk{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px;margin-bottom:16px}.bulk label{display:flex;flex-direction:column;gap:6px;min-width:0;color:var(--muted);font-size:.78rem;font-weight:600}.bulk input{font:400 .84rem Consolas,monospace}
 .toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:16px}.toolbar label{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.82rem;font-weight:600}.toolbar input{width:72px}.toolbar .hint{flex:1;min-width:220px;color:var(--dim);font-size:.74rem;line-height:1.5}
 .table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}table{width:100%;min-width:820px;border-collapse:collapse;font-size:.82rem}
 th{padding:10px 8px;border-bottom:1px solid var(--line);background:#162033;color:var(--muted);font-size:.74rem;font-weight:600;text-align:left;vertical-align:bottom;line-height:1.4}th small{display:block;font-weight:400}
@@ -21,7 +22,7 @@ input{width:100%;min-height:42px;padding:9px 11px;border:1px solid var(--line);b
 .result{position:relative;overflow:hidden;border-color:rgba(245,158,11,.48)}.result:before{position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,var(--accent),#34d399);content:''}
 .copy-line{display:flex;gap:10px;align-items:stretch}.copy-line output{flex:1;display:flex;align-items:center;min-height:44px;padding:10px 12px;overflow-x:auto;border:1px solid var(--line);border-radius:9px;background:var(--field);color:var(--green);font:700 .9rem Consolas,monospace;white-space:nowrap}
 .formula{padding:15px 16px;border:1px solid #78350f;border-radius:9px;background:#1a1408;color:#fcd34d;font:400 .82rem/1.8 Consolas,monospace}.note{margin-top:12px;color:var(--dim);font-size:.76rem;line-height:1.7}.note b{color:var(--muted)}.warn{color:#fbbf24}
-@media(max-width:600px){body{padding-top:22px}.card{padding:20px}.modes{grid-template-columns:1fr}.copy-line{flex-direction:column}}
+@media(max-width:600px){body{padding-top:22px}.card{padding:20px}.modes,.bulk{grid-template-columns:1fr}.copy-line{flex-direction:column}}
 </style></head>
 <body><main class=container>
 <a class=back href=../index.html>← 返回工具箱</a>
@@ -32,7 +33,13 @@ input{width:100%;min-height:42px;padding:9px 11px;border:1px solid var(--line);b
 <button class=mode type=button data-mode=wall aria-pressed=false><b>② 示教点与墙面平行</b><small>示教点与墙面不平行，手动调到平行后读取当前角度。设置新 angle_offset 后，原示教点即对应平行位置。</small></button>
 </div></section>
 <section class=card><h2>关节角度</h2>
-<div class=toolbar><label>关节数<input id=count type=number min=1 max=12 step=1 value=6></label><p class=hint>可从表格或日志复制一整列数据（逗号、空格、制表符或换行分隔），粘贴到某列的单元格后，会从该行起向下依次填入。</p></div>
+<div class=bulk>
+<label>joint_invert · 全部关节<input data-bulk=invert placeholder="true, true, false, true, true, true" aria-label="joint_invert 全部关节"></label>
+<label>当前 angle_offset · 全部关节<input data-bulk=offset inputmode=decimal placeholder="1.4, 0, 0, 0, 0, 0" aria-label="当前 angle_offset 全部关节"></label>
+<label><span id=bulk-target></span><input data-bulk=target inputmode=decimal placeholder="12.86, 24.87, 99.88, -2.43, 5.94, -45.71"></label>
+<label><span id=bulk-current></span><input data-bulk=current inputmode=decimal placeholder="-76.06, 419.38, 108.75, 130.68, 211.55, 12.81"></label>
+</div>
+<div class=toolbar><label>关节数<input id=count type=number min=1 max=12 step=1 value=6></label><p class=hint>上方每格对应一列，按 J1→Jn 顺序填入全部关节的值（逗号、空格、制表符或换行分隔），粘贴或回车后写入表格，数量超过当前关节数时自动增加。也可把整列数据粘贴到表格某个单元格，从该行起向下填入。</p></div>
 <div class=table-wrap><table><thead><tr><th>关节</th><th>joint_invert<small>true / false</small></th><th>当前 angle_offset<small>deg</small></th><th id=head-target></th><th id=head-current></th><th class=out>增量 Δ<small>deg</small></th><th class=out>新 angle_offset<small>deg</small></th></tr></thead><tbody id=rows></tbody></table></div>
 <div class=actions><button class=secondary id=fill-zero type=button>angle_offset 全部置 0</button><button class=secondary id=reset type=button>重置示例</button><button class=secondary id=clear type=button>清空</button></div>
 <div id=error role=alert></div></section>
@@ -75,7 +82,7 @@ const SAMPLE={
  wall:{invert:[true,true,false,true,true,true],offset:[0,1.2,-0.5,0,0,0],target:[35,-20,110,0,-90,45],current:[36.2,-19.35,109.1,0,-90,45]}
 };
 const COLS=['invert','offset','target','current'],MAX=12;
-const rowsEl=document.getElementById('rows'),countEl=document.getElementById('count'),error=document.getElementById('error'),summary=document.getElementById('summary');
+const rowsEl=document.getElementById('rows'),countEl=document.getElementById('count'),error=document.getElementById('error'),summary=document.getElementById('summary'),bulkEls=[...document.querySelectorAll('[data-bulk]')];
 let mode='swap';
 const fmt=v=>(Object.is(Math.round(v*1e6),-0)?0:v).toFixed(6);
 const signed=v=>(v>0?'+':v<0?'−':'')+fmt(Math.abs(v));
@@ -92,10 +99,28 @@ function setMode(next){
  mode=next;document.querySelectorAll('.mode').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===mode));
  document.getElementById('head-target').innerHTML=`${MODES[mode].target}<small>deg · 目标读数</small>`;
  document.getElementById('head-current').innerHTML=`${MODES[mode].current}<small>deg · 同一位置当前读数</small>`;
+ document.getElementById('bulk-target').textContent=`${MODES[mode].target} · 全部关节`;
+ document.getElementById('bulk-current').textContent=`${MODES[mode].current} · 全部关节`;
+ bulkEls[2].setAttribute('aria-label',`${MODES[mode].target} 全部关节`);bulkEls[3].setAttribute('aria-label',`${MODES[mode].current} 全部关节`);
  document.getElementById('mode-note').innerHTML=MODES[mode].note;
 }
 function load(sample){setCount(sample.target.length);COLS.forEach(c=>sample[c].forEach((v,i)=>cell(i,c).value=v));calculate()}
+/* Mirror each table column into its bulk field, except the one being edited. */
+function syncBulk(){
+ bulkEls.forEach(el=>{if(el===document.activeElement)return;const vals=[...rowsEl.rows].map((tr,i)=>cell(i,el.dataset.bulk).value.trim());while(vals.length&&!vals.at(-1))vals.pop();el.value=vals.join(', ')});
+}
+function fillColumn(col,list,start){
+ if(start+list.length>rowsEl.rows.length)setCount(start+list.length);
+ list.slice(0,MAX-start).forEach((v,k)=>cell(start+k,col).value=col==='invert'?(AngleOffsetMath.parseInvert(v)??''):Number.isFinite(Number(v))?Number(v):'');
+}
+function applyBulk(el){
+ const list=AngleOffsetMath.splitList(el.value);if(!list.length)return;
+ fillColumn(el.dataset.bulk,list,0);
+ for(let i=list.length;i<rowsEl.rows.length;i++)cell(i,el.dataset.bulk).value='';
+ calculate();
+}
 function calculate(){
+ syncBulk();
  const bad=[],values=[];
  [...rowsEl.rows].forEach((tr,i)=>{
   const row={};
@@ -117,10 +142,13 @@ rowsEl.addEventListener('paste',event=>{
  const input=event.target.closest('input');if(!input)return;
  const list=AngleOffsetMath.splitList(event.clipboardData.getData('text'));if(list.length<2)return;
  event.preventDefault();
- const start=input.closest('tr').sectionRowIndex,col=input.dataset.col;
- if(start+list.length>rowsEl.rows.length)setCount(start+list.length);
- list.slice(0,MAX-start).forEach((v,k)=>cell(start+k,col).value=col==='invert'?(AngleOffsetMath.parseInvert(v)??''):Number.isFinite(Number(v))?Number(v):'');
+ fillColumn(input.dataset.col,list,input.closest('tr').sectionRowIndex);
  calculate();
+});
+bulkEls.forEach(el=>{
+ el.addEventListener('input',event=>{if(event.inputType==='insertFromPaste')applyBulk(el)});
+ el.addEventListener('change',()=>applyBulk(el));
+ el.addEventListener('blur',syncBulk);
 });
 countEl.addEventListener('change',()=>{setCount(Number(countEl.value));calculate()});
 document.querySelectorAll('.mode').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.mode!==mode)setMode(b.dataset.mode)}));
