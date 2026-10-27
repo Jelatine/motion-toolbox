@@ -11,9 +11,9 @@ h1{color:#f8fafc;font-size:clamp(1.6rem,5vw,2rem);letter-spacing:-.02em}.subtitl
 h2{margin-bottom:18px;color:var(--dim);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase}
 .modes{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mode{display:flex;flex-direction:column;gap:6px;min-height:0;padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--field);color:var(--muted);text-align:left;font-weight:400}.mode b{color:var(--text);font-size:.9rem}.mode small{line-height:1.6}.mode:hover{background:#172033}.mode[aria-pressed=true]{border-color:var(--accent);background:rgba(245,158,11,.08);box-shadow:0 0 0 3px rgba(245,158,11,.12)}
 .toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:16px}.toolbar label{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.82rem;font-weight:600}.toolbar input{width:72px}.toolbar .hint{flex:1;min-width:220px;color:var(--dim);font-size:.74rem;line-height:1.5}
-.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}table{width:100%;min-width:720px;border-collapse:collapse;font-size:.82rem}
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}table{width:100%;min-width:820px;border-collapse:collapse;font-size:.82rem}
 th{padding:10px 8px;border-bottom:1px solid var(--line);background:#162033;color:var(--muted);font-size:.74rem;font-weight:600;text-align:left;vertical-align:bottom;line-height:1.4}th small{display:block;font-weight:400}
-td{padding:6px 8px;border-bottom:1px solid rgba(51,65,85,.6)}tr:last-child td{border-bottom:0}td.j{width:52px;color:var(--dim);font:600 .8rem Consolas,monospace}
+td{padding:6px 8px;border-bottom:1px solid rgba(51,65,85,.6)}tr:last-child td{border-bottom:0}td.inv{width:112px}td.j{width:52px;color:var(--dim);font:600 .8rem Consolas,monospace}
 td input{min-height:36px;padding:7px 9px;font:400 .84rem Consolas,monospace}td.out{font:400 .86rem Consolas,monospace;white-space:nowrap}td.new{color:var(--green);font-weight:700}td.zero{color:var(--dim)}th.out,td.out{text-align:right}th.out{white-space:nowrap}
 input{width:100%;min-height:42px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;outline:0;background:var(--field);color:#f1f5f9;font:inherit}input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(245,158,11,.14)}input.invalid{border-color:var(--red)}small{color:var(--dim);font-size:.72rem;font-weight:400;line-height:1.5}
 .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}button{min-height:42px;padding:9px 18px;border:0;border-radius:9px;background:var(--accent);color:#1c1300;font:inherit;font-size:.84rem;font-weight:700;cursor:pointer}button:hover{background:#d97706}.secondary{border:1px solid var(--line);background:var(--field);color:var(--muted)}.secondary:hover{background:#172033;color:var(--text)}
@@ -33,32 +33,35 @@ input{width:100%;min-height:42px;padding:9px 11px;border:1px solid var(--line);b
 </div></section>
 <section class=card><h2>关节角度</h2>
 <div class=toolbar><label>关节数<input id=count type=number min=1 max=12 step=1 value=6></label><p class=hint>可从表格或日志复制一整列数据（逗号、空格、制表符或换行分隔），粘贴到某列的单元格后，会从该行起向下依次填入。</p></div>
-<div class=table-wrap><table><thead><tr><th>关节</th><th>当前 angle_offset<small>deg</small></th><th id=head-target></th><th id=head-current></th><th class=out>增量 Δ<small>deg</small></th><th class=out>新 angle_offset<small>deg</small></th></tr></thead><tbody id=rows></tbody></table></div>
+<div class=table-wrap><table><thead><tr><th>关节</th><th>joint_invert<small>true / false</small></th><th>当前 angle_offset<small>deg</small></th><th id=head-target></th><th id=head-current></th><th class=out>增量 Δ<small>deg</small></th><th class=out>新 angle_offset<small>deg</small></th></tr></thead><tbody id=rows></tbody></table></div>
 <div class=actions><button class=secondary id=fill-zero type=button>angle_offset 全部置 0</button><button class=secondary id=reset type=button>重置示例</button><button class=secondary id=clear type=button>清空</button></div>
 <div id=error role=alert></div></section>
 <section class='card result' aria-live=polite><h2>要设置的 angle_offset</h2>
 <div class=copy-line><output id=summary>—</output><button id=copy type=button>复制</button></div>
 <p class=note id=mode-note></p></section>
 <section class=card><h2>计算说明</h2>
-<div class=formula>运控换算：angle = (pulse − offset) / (PPR × N) × 360° × dir + angle_offset<br>Δ = 目标角度 − 当前角度<br>新 angle_offset = 当前 angle_offset + Δ</div>
-<p class=note>同一物理位置的 pulse 不变，PPR、N、dir、offset 也不变，因此角度读数只随 angle_offset 平移；dir 只作用于脉冲项，不影响 Δ 的符号。<br>
+<div class=formula>运控换算：angle = s × [ (pulse − offset) / (PPR × N) × 360° + angle_offset ]，s = joint_invert ? +1 : −1<br>Δ = 目标角度 − 当前角度<br>新 angle_offset = 当前 angle_offset + s × Δ</div>
+<p class=note>同一物理位置的 pulse 不变，PPR、N、joint_invert、offset 也不变，因此角度读数只随 angle_offset 平移。angle_offset 与脉冲项一起乘方向系数 s，<b>joint_invert = false 的关节需写入 −Δ</b>（已由实机换板数据验证）。换板时新板的 joint_invert 须与旧板一致。<br>
 两种场景使用同一公式：<b>换板</b>时目标角度为换板前的读数；<b>墙面平行</b>时目标角度为原示教点角度，当前角度为调平后的读数，更新后机械臂在调平位置的读数等于原示教点，执行示教点即回到平行位置。<br>
 结果不做 ±180° 归一化，多圈关节可直接使用。</p></section>
 </main><script id=offset-math>
-/* angle = (pulse - offset) / (PPR × N) × 360° × dir + angle_offset
-   At a fixed pulse the reading shifts 1:1 with angle_offset, so making the
-   physical position that currently reads `current` read `target` instead needs
-   new angle_offset = angle_offset + (target - current). */
+/* angle = s × [(pulse - offset) / (PPR × N) × 360° + angle_offset], s = joint_invert ? +1 : -1
+   angle_offset is scaled by the direction sign together with the pulse term
+   (confirmed on a board swap: the joint_invert=false joint needed -Δ). At a fixed
+   pulse, making the position that reads `current` read `target` instead needs
+   new angle_offset = angle_offset + s × (target - current). */
 (function (root) {
   'use strict';
-  function offsetFor(angleOffset, target, current) {
+  function offsetFor(angleOffset, target, current, invert) {
     const delta = target - current;
-    return {delta, angleOffset: angleOffset + delta};
+    return {delta, angleOffset: angleOffset + (invert ? delta : -delta)};
   }
-  const compute = rows => rows.map(r => offsetFor(r.angleOffset, r.target, r.current));
+  const compute = rows => rows.map(r => offsetFor(r.angleOffset, r.target, r.current, r.invert));
   /* Accepts comma / whitespace / semicolon separated lists, including full-width separators. */
-  const parseList = text => String(text).trim().split(/[\s,;，；、]+/).filter(Boolean).map(Number);
-  const api = {offsetFor, compute, parseList};
+  const splitList = text => String(text).trim().split(/[\s,;，；、]+/).filter(Boolean);
+  const parseList = text => splitList(text).map(Number);
+  const parseInvert = v => /^(true|1)$/i.test(String(v).trim()) ? true : /^(false|0)$/i.test(String(v).trim()) ? false : null;
+  const api = {offsetFor, compute, splitList, parseList, parseInvert};
   if(typeof module!=='undefined'&&module.exports) module.exports=api;
   else root.AngleOffsetMath=api;
 })(globalThis);
@@ -68,10 +71,10 @@ const MODES={
  wall:{target:'原示教点角度',current:'调平后当前角度',note:'<span class=warn>注意：angle_offset 是关节零点，修改后该关节的所有示教点都会同步平移，而不仅是这一个点。</span>更新后机械臂在调平位置应显示原示教点角度；未调整的关节 Δ 为 0。'}
 };
 const SAMPLE={
- swap:{offset:[0,0,0,0,0,0],target:[12.35,-45.2,90.018,0.5,-30,175.6],current:[-127.88,61.07,233.5,-12.2,-30,40.1]},
- wall:{offset:[0,1.2,-0.5,0,0,0],target:[35,-20,110,0,-90,45],current:[36.2,-19.35,109.1,0,-90,45]}
+ swap:{invert:[true,true,false,true,true,true],offset:[1.4,0,0,0,0,0],target:[12.86,24.87,99.88,-2.43,5.94,-45.71],current:[-76.064599609375,419.3769836425781,108.74954223632813,130.67825317382813,211.54998779296875,12.814178466796875]},
+ wall:{invert:[true,true,false,true,true,true],offset:[0,1.2,-0.5,0,0,0],target:[35,-20,110,0,-90,45],current:[36.2,-19.35,109.1,0,-90,45]}
 };
-const COLS=['offset','target','current'],MAX=12;
+const COLS=['invert','offset','target','current'],MAX=12;
 const rowsEl=document.getElementById('rows'),countEl=document.getElementById('count'),error=document.getElementById('error'),summary=document.getElementById('summary');
 let mode='swap';
 const fmt=v=>(Object.is(Math.round(v*1e6),-0)?0:v).toFixed(6);
@@ -81,7 +84,7 @@ function setCount(n){
  n=Math.min(MAX,Math.max(1,Math.round(n)||1));countEl.value=n;
  while(rowsEl.rows.length<n){
   const i=rowsEl.rows.length,tr=rowsEl.insertRow();
-  tr.innerHTML=`<td class=j>J${i+1}</td>`+COLS.map(c=>`<td><input type=text inputmode=decimal data-col=${c} aria-label="J${i+1} ${c}"></td>`).join('')+'<td class=out data-out=delta>—</td><td class="out new" data-out=new>—</td>';
+  tr.innerHTML=`<td class=j>J${i+1}</td>`+COLS.map(c=>c==='invert'?`<td class=inv><input type=text data-col=${c} placeholder=true/false aria-label="J${i+1} joint_invert"></td>`:`<td><input type=text inputmode=decimal data-col=${c} aria-label="J${i+1} ${c}"></td>`).join('')+'<td class=out data-out=delta>—</td><td class="out new" data-out=new>—</td>';
  }
  while(rowsEl.rows.length>n) rowsEl.deleteRow(-1);
 }
@@ -96,22 +99,27 @@ function calculate(){
  const bad=[],values=[];
  [...rowsEl.rows].forEach((tr,i)=>{
   const row={};
-  COLS.forEach(c=>{const input=cell(i,c),raw=input.value.trim(),v=raw===''&&c==='offset'?0:Number(raw);const ok=raw!==''||c==='offset';input.classList.toggle('invalid',!ok||!Number.isFinite(v));if(!ok||!Number.isFinite(v))bad.push(`J${i+1}`);row[c]=v});
+  COLS.forEach(c=>{
+   const input=cell(i,c),raw=input.value.trim();let v,ok;
+   if(c==='invert'){v=AngleOffsetMath.parseInvert(raw);ok=v!==null}
+   else{v=raw===''&&c==='offset'?0:Number(raw);ok=(raw!==''||c==='offset')&&Number.isFinite(v)}
+   input.classList.toggle('invalid',!ok);if(!ok)bad.push(`J${i+1}`);row[c]=v;
+  });
   values.push(row);
  });
- const results=[...rowsEl.rows].map((tr,i)=>bad.includes(`J${i+1}`)?null:AngleOffsetMath.offsetFor(values[i].offset,values[i].target,values[i].current));
+ const results=[...rowsEl.rows].map((tr,i)=>bad.includes(`J${i+1}`)?null:AngleOffsetMath.offsetFor(values[i].offset,values[i].target,values[i].current,values[i].invert));
  results.forEach((r,i)=>{const d=rowsEl.rows[i].querySelector('[data-out=delta]'),n=rowsEl.rows[i].querySelector('[data-out=new]');d.textContent=r?signed(r.delta):'—';d.classList.toggle('zero',!!r&&Math.abs(r.delta)<5e-7);n.textContent=r?fmt(r.angleOffset):'—'});
- if(bad.length){error.textContent=`请为 ${[...new Set(bad)].join('、')} 填写有效数值（当前 angle_offset 留空按 0 处理）。`;error.classList.add('visible');summary.textContent='—';return}
+ if(bad.length){error.textContent=`请为 ${[...new Set(bad)].join('、')} 填写有效数值（joint_invert 填 true/false 或 1/0，当前 angle_offset 留空按 0 处理）。`;error.classList.add('visible');summary.textContent='—';return}
  error.textContent='';error.classList.remove('visible');summary.textContent=results.map(r=>fmt(r.angleOffset)).join(', ');
 }
 rowsEl.addEventListener('input',calculate);
 rowsEl.addEventListener('paste',event=>{
  const input=event.target.closest('input');if(!input)return;
- const list=AngleOffsetMath.parseList(event.clipboardData.getData('text'));if(list.length<2)return;
+ const list=AngleOffsetMath.splitList(event.clipboardData.getData('text'));if(list.length<2)return;
  event.preventDefault();
  const start=input.closest('tr').sectionRowIndex,col=input.dataset.col;
  if(start+list.length>rowsEl.rows.length)setCount(start+list.length);
- list.slice(0,MAX-start).forEach((v,k)=>cell(start+k,col).value=Number.isFinite(v)?v:'');
+ list.slice(0,MAX-start).forEach((v,k)=>cell(start+k,col).value=col==='invert'?(AngleOffsetMath.parseInvert(v)??''):Number.isFinite(Number(v))?Number(v):'');
  calculate();
 });
 countEl.addEventListener('change',()=>{setCount(Number(countEl.value));calculate()});

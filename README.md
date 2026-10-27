@@ -47,7 +47,7 @@ DS402 伺服协议与 CANopen 通信的全套调试辅助，包含四个功能�
 - **更换驱动板**：换板前记录角度，换板后输入当前角度；更新后新板在同一位置显示换板前的角度。
 - **示教点与墙面平行**：输入原示教点角度和手动调平后的当前角度；更新后执行原示教点即到达平行位置（该关节所有示教点会同步平移）。
 
-计算公式：`新 angle_offset = 当前 angle_offset + (目标角度 − 当前角度)`，由运控换算 `angle = (pulse − offset) / (PPR × N) × 360° × dir + angle_offset` 推得。
+计算公式：`新 angle_offset = 当前 angle_offset + s × (目标角度 − 当前角度)`，`s = joint_invert ? +1 : −1`，由运控换算 `angle = s × [(pulse − offset) / (PPR × N) × 360° + angle_offset]` 推得（angle_offset 同样受方向影响，joint_invert = false 的关节需写入 −Δ）。
 
 ### 6. 机器人 DH 三维建模
 
