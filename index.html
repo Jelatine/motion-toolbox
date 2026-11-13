@@ -294,8 +294,6 @@
       const a = document.createElement('a');
       a.className = 'tool-card';
       a.href = tool.file;
-      a.target = '_blank';
-      a.rel = 'noopener';
       a.innerHTML = `
         <div class="tool-icon" style="background:${tool.iconBg}">${tool.icon}</div>
         <div>
@@ -303,7 +301,7 @@
           <div class="tool-desc">${tool.desc}</div>
         </div>
         <div class="tool-tags">${tool.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
-        <span class="open-btn">↗</span>
+        <span class="open-btn">→</span>
       `;
       grid.appendChild(a);
     });
