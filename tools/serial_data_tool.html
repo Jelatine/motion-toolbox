@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang=zh-CN><head>
+<meta charset=UTF-8><meta name=viewport content=width=device-width,initial-scale=1>
+<title>串口数据工具</title><style>
+*{box-sizing:border-box;margin:0;padding:0}:root{color-scheme:dark;--page:#0f172a;--card:#1e293b;--field:#111827;--line:#334155;--muted:#94a3b8;--dim:#64748b;--text:#e2e8f0;--accent:#14b8a6;--accent2:#5eead4;--green:#34d399;--red:#f87171}
+body{min-height:100vh;padding:32px 16px 48px;background:radial-gradient(circle at 50% -180px,rgba(20,184,166,.14),transparent 420px),var(--page);color:var(--text);font-family:'Segoe UI','Microsoft YaHei',system-ui,sans-serif}
+.container{width:min(100%,960px);margin:auto}.back{display:inline-block;margin-bottom:24px;color:var(--muted);font-size:.82rem;text-decoration:none}.back:hover{color:var(--accent2)}
+.eyebrow{margin-bottom:8px;color:var(--accent2);font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+h1{color:#f8fafc;font-size:clamp(1.6rem,5vw,2rem);letter-spacing:-.02em}.subtitle{margin:10px 0 24px;color:var(--muted);font-size:.9rem;line-height:1.7}
+.tabs{display:flex;gap:6px;margin-bottom:18px;padding:5px;border:1px solid var(--line);border-radius:12px;background:var(--field)}.tab{flex:1;min-height:40px;border:0;border-radius:8px;background:transparent;color:var(--muted);font:inherit;font-size:.86rem;font-weight:600;cursor:pointer}.tab:hover{color:var(--text)}.tab[aria-selected=true]{background:var(--card);color:var(--accent2);box-shadow:inset 0 0 0 1px rgba(20,184,166,.45)}
+[hidden]{display:none!important}
+.card{margin-bottom:18px;padding:24px;border:1px solid var(--line);border-radius:14px;background:rgba(30,41,59,.94);box-shadow:0 20px 48px rgba(2,6,23,.18)}
+h2{margin-bottom:16px;color:var(--dim);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase}
+label{display:flex;flex-direction:column;gap:6px;min-width:0;color:var(--muted);font-size:.78rem;font-weight:600}
+input,select,textarea{width:100%;min-height:40px;padding:8px 11px;border:1px solid var(--line);border-radius:8px;outline:0;background:var(--field);color:#f1f5f9;font:inherit;font-size:.86rem}
+textarea{min-height:92px;resize:vertical;font:400 .9rem/1.6 Consolas,monospace}input.mono{font-family:Consolas,monospace}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(20,184,166,.15)}.invalid{border-color:var(--red)!important}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px 14px}.span2{grid-column:span 2}.span4{grid-column:1/-1}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}.row .grow{flex:1}
+.meta{margin-top:10px;color:var(--dim);font-size:.76rem;line-height:1.6}.meta b{color:var(--muted);font-family:Consolas,monospace}
+button{min-height:38px;padding:8px 16px;border:0;border-radius:9px;background:var(--accent);color:#03201c;font:inherit;font-size:.82rem;font-weight:700;cursor:pointer}button:hover{background:#0d9488}.secondary{border:1px solid var(--line);background:var(--field);color:var(--muted)}.secondary:hover{background:#172033;color:var(--text)}
+.seg{display:inline-flex;padding:3px;border:1px solid var(--line);border-radius:9px;background:var(--field)}.seg button{min-height:30px;padding:4px 12px;background:transparent;color:var(--muted);font-weight:600}.seg button[aria-pressed=true]{background:var(--card);color:var(--accent2);box-shadow:inset 0 0 0 1px rgba(20,184,166,.4)}
+.error{display:none;margin-top:12px;padding:10px 12px;border:1px solid rgba(248,113,113,.32);border-radius:8px;background:rgba(127,29,29,.16);color:#fca5a5;font-size:.8rem}.error.visible{display:block}
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}table{width:100%;border-collapse:collapse;font-size:.82rem}
+th{padding:9px 10px;border-bottom:1px solid var(--line);background:#162033;color:var(--muted);font-size:.74rem;font-weight:600;text-align:left;white-space:nowrap}
+td{padding:6px 10px;border-bottom:1px solid rgba(51,65,85,.6);vertical-align:middle}tr:last-child td{border-bottom:0}td.name{white-space:nowrap}td.name small{display:block;color:var(--dim);font-size:.7rem}
+tr.match td{background:rgba(52,211,153,.07)}.badge{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;background:rgba(52,211,153,.16);color:var(--green);font-size:.68rem;font-weight:700;vertical-align:middle}
+.copyable{display:inline-block;max-width:100%;padding:5px 9px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--text);font:400 .86rem Consolas,monospace;text-align:left;white-space:pre-wrap;word-break:break-all;cursor:copy}.copyable:hover{border-color:rgba(20,184,166,.5);background:rgba(20,184,166,.08)}
+.copyable.check{color:var(--green);font-weight:700}.copyable .tail{color:var(--green);font-weight:700}
+.frame{display:block;width:100%;min-height:52px;padding:12px 14px;border:1px solid var(--line);background:var(--field);font-size:1rem;line-height:1.9}
+.b{padding:1px 2px;border-radius:3px}.k-addr{color:#60a5fa}.k-fc{color:#c084fc}.k-start{color:#fbbf24}.k-qty{color:#fb923c}.k-count{color:#f472b6}.k-data{color:#e2e8f0}.k-crc{color:var(--green);font-weight:700}.k-err{color:var(--red)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:10px;font-size:.74rem;color:var(--dim)}.legend span:before{display:inline-block;width:8px;height:8px;margin-right:6px;border-radius:2px;background:currentColor;content:''}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;font-size:.82rem}.kv dt{color:var(--dim)}.kv dd{font-family:Consolas,monospace;color:var(--text)}.ok{color:var(--green)}.bad{color:var(--red)}
+.note{margin-top:12px;color:var(--dim);font-size:.76rem;line-height:1.7}.note b{color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:28px;padding:9px 16px;border:1px solid rgba(20,184,166,.5);border-radius:9px;background:#0b2a29;color:var(--accent2);font-size:.82rem;opacity:0;pointer-events:none;transform:translate(-50%,8px);transition:.18s}.toast.show{opacity:1;transform:translate(-50%,0)}
+.custom{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}.custom .grid{grid-template-columns:repeat(6,1fr)}.chk{flex-direction:row;align-items:center;gap:8px}.chk input{width:auto;min-height:0}
+@media(max-width:720px){body{padding-top:22px}.card{padding:18px}.grid,.custom .grid{grid-template-columns:1fr 1fr}.span2{grid-column:1/-1}}
+</style></head>
+<body><main class=container>
+<a class=back href=../index.html>← 返回工具箱</a>
+<div class=eyebrow>Serial Data Tool</div><h1>串口数据工具</h1>
+<p class=subtitle>常用校验算法一次全部算出，并按"原始数据 + 校验码"拼成完整报文；Modbus-RTU 请求帧可视化配置与报文解析。所有输出点击即可复制。</p>
+<div class=tabs role=tablist><button class=tab role=tab data-tab=check aria-selected=true>校验计算</button><button class=tab role=tab data-tab=modbus aria-selected=false>Modbus-RTU 数据帧</button></div>
+
+<!-- ───────────── 校验计算 ───────────── -->
+<div class=panel id=panel-check>
+<section class=card><h2>输入数据</h2>
+<div class=row style="margin-bottom:10px"><div class=seg id=in-mode><button type=button data-v=hex aria-pressed=true>HEX</button><button type=button data-v=ascii aria-pressed=false>ASCII</button></div><span class="meta grow" id=in-hint style="margin:0"></span><button class=secondary type=button id=sample>示例</button><button class=secondary type=button id=clear-in>清空</button></div>
+<textarea id=input spellcheck=false placeholder="01 03 00 00 00 0A"></textarea>
+<div class=grid style="margin-top:12px">
+<label>跳过开头字节<input id=skip-head type=number min=0 value=0></label>
+<label>忽略末尾字节<input id=skip-tail type=number min=0 value=0></label>
+<label>校验码字节序<select id=endian><option value=auto>按算法默认</option><option value=be>大端（高字节在前）</option><option value=le>小端（低字节在前）</option></select></label>
+<label>输出格式<select id=fmt><option value=space>01 02 03</option><option value=compact>010203</option><option value=c>0x01, 0x02, 0x03</option></select></label>
+</div>
+<p class=meta id=in-meta></p><div class=error id=in-error role=alert></div>
+</section>
+<section class=card><h2>校验结果 · 点击校验值或完整报文复制</h2>
+<div class=table-wrap><table><thead><tr><th>算法</th><th>校验值</th><th>完整报文（数据 + 校验）</th></tr></thead><tbody id=check-rows></tbody></table></div>
+<div class=custom><div class=row style="margin-bottom:10px"><b style="font-size:.8rem;color:var(--muted)">自定义 CRC 参数</b><span class=meta style="margin:0">结果显示在表格最后一行</span></div>
+<div class=grid>
+<label>位宽<select id=c-width><option>8</option><option selected>16</option><option>32</option></select></label>
+<label>多项式 Poly<input class=mono id=c-poly value=0x8005></label>
+<label>初值 Init<input class=mono id=c-init value=0xFFFF></label>
+<label>结果异或 XorOut<input class=mono id=c-xor value=0x0000></label>
+<label class=chk><input type=checkbox id=c-refin checked>输入反转 RefIn</label>
+<label class=chk><input type=checkbox id=c-refout checked>输出反转 RefOut</label>
+</div></div>
+<p class=note>表格中带 <span class=badge>末尾匹配</span> 的行表示：输入的最后几个字节恰好等于该算法对其前面数据的校验值（大端或小端均可），可用于识别未知报文使用的校验方式。<br>CRC 参数遵循 Rocksoft 模型（与 reveng 目录一致）。<b>反转输入的 CRC</b>（MODBUS、IBM、USB、KERMIT、X25、CRC-32 等）默认按小端追加，其余默认大端；可用"校验码字节序"统一覆盖。<b>LRC</b> 即 Modbus-ASCII 使用的"累加和取补码"。</p>
+</section>
+</div>
+
+<!-- ───────────── Modbus-RTU ───────────── -->
+<div class=panel id=panel-modbus hidden>
+<section class=card><h2>请求帧配置</h2>
+<div class=grid>
+<label>从站地址<input class=mono id=m-slave value=1></label>
+<label class=span2>功能码<select id=m-fc>
+<option value=1>0x01 读线圈</option><option value=2>0x02 读离散输入</option><option value=3 selected>0x03 读保持寄存器</option><option value=4>0x04 读输入寄存器</option>
+<option value=5>0x05 写单个线圈</option><option value=6>0x06 写单个寄存器</option><option value=15>0x0F 写多个线圈</option><option value=16>0x10 写多个寄存器</option></select></label>
+<label>起始地址<input class=mono id=m-start value=0></label>
+<label data-fc="1 2 3 4">数量<input class=mono id=m-qty value=10></label>
+<label data-fc=5>线圈状态<select id=m-coil><option value=1>ON（FF 00）</option><option value=0>OFF（00 00）</option></select></label>
+<label data-fc=6>寄存器值<input class=mono id=m-value value=0x0003></label>
+<label data-fc=6>值类型<select id=m-type6><option value=u16>U16 / HEX</option><option value=i16>I16 有符号</option></select></label>
+<label data-fc=16>数据类型<select id=m-type><option value=u16>U16 / HEX（1 寄存器）</option><option value=i16>I16（1 寄存器）</option><option value=u32>U32（2 寄存器）</option><option value=i32>I32（2 寄存器）</option><option value=f32>Float32（2 寄存器）</option></select></label>
+<label data-fc=16>32 位字序<select id=m-word><option value=abcd>ABCD 高字在前</option><option value=cdab>CDAB 低字在前</option></select></label>
+<label class=span4 data-fc=15>线圈值（0/1 列表，按地址递增顺序）<textarea class=mono id=m-bits spellcheck=false style="min-height:60px">1 0 1 1 0 0 1 1 1 0</textarea></label>
+<label class=span4 data-fc=16>寄存器值列表（逗号/空格/换行分隔，支持十进制、负数、0x 十六进制、小数）<textarea class=mono id=m-values spellcheck=false style="min-height:60px">0x000A, 258</textarea></label>
+</div>
+<p class=meta>地址与数值支持十进制或 <b>0x</b> 十六进制。起始地址为协议地址（从 0 开始）；PLC 风格的 40001 对应保持寄存器协议地址 0。</p>
+<div class=error id=m-error role=alert></div>
+</section>
+<section class=card><h2>请求帧 · 点击复制</h2>
+<button type=button class="copyable frame" id=m-frame>—</button>
+<div class=legend><span class=k-addr>从站地址</span><span class=k-fc>功能码</span><span class=k-start>起始地址</span><span class=k-qty>数量 / 值</span><span class=k-count>字节数</span><span class=k-data>数据</span><span class=k-crc>CRC16（低字节在前）</span></div>
+<div class=row style="margin-top:14px"><span class="meta grow" id=m-meta style="margin:0"></span><div class=seg id=m-fmt><button type=button data-v=space aria-pressed=true>01 02</button><button type=button data-v=compact aria-pressed=false>0102</button><button type=button data-v=c aria-pressed=false>0x01,</button></div><button class=secondary type=button id=m-to-parse>送入解析</button></div>
+</section>
+<section class=card><h2>报文解析</h2>
+<textarea id=p-input spellcheck=false placeholder="粘贴一帧 Modbus-RTU 请求或响应，例如 01 03 04 00 0A 01 02 DB CF"></textarea>
+<div class=error id=p-error role=alert></div>
+<div id=p-out style="margin-top:14px"></div>
+<p class=note>自动区分请求帧与响应帧（读功能码按字节数字段判定），校验 CRC，解析异常码与寄存器 / 线圈数据。</p>
+</section>
+</div>
+</main>
+<div class=toast id=toast>已复制</div>
+
+<script id=serial-math>
+/* Pure helpers for the serial data tool: hex parsing/formatting, checksum catalog,
+   Modbus-RTU frame building and parsing. Exported for node tests. */
+(function (root) {
+  'use strict';
+  const hex2 = b => b.toString(16).toUpperCase().padStart(2, '0');
+
+  /* "01 02 03", "010203", "0x01,0x02", "1 2 3" → [1,2,3]. Throws with a readable message. */
+  function parseHex(text) {
+    const tokens = String(text).replace(/0x/gi, ' ').split(/[\s,;，；:\-]+/).filter(Boolean);
+    const out = [];
+    for (const t of tokens) {
+      if (!/^[0-9a-f]+$/i.test(t)) throw new Error(`非法十六进制："${t}"`);
+      if (t.length <= 2) { out.push(parseInt(t, 16)); continue; }
+      if (t.length % 2) throw new Error(`"${t}" 位数为奇数，无法按字节拆分`);
+      for (let i = 0; i < t.length; i += 2) out.push(parseInt(t.slice(i, i + 2), 16));
+    }
+    return out;
+  }
+  /* UTF-8 text with escapes \r \n \t \0 \\ \xHH. */
+  function parseAscii(text) {
+    const out = [], enc = new TextEncoder();
+    const s = String(text);
+    for (let i = 0; i < s.length; i++) {
+      const c = s[i];
+      if (c === '\\' && i + 1 < s.length) {
+        const n = s[i + 1];
+        const simple = {r: 13, n: 10, t: 9, '0': 0, '\\': 92};
+        if (n in simple) { out.push(simple[n]); i++; continue; }
+        if (n === 'x' && /^[0-9a-f]{2}$/i.test(s.slice(i + 2, i + 4))) { out.push(parseInt(s.slice(i + 2, i + 4), 16)); i += 3; continue; }
+      }
+      const cp = s.codePointAt(i);
+      const ch = String.fromCodePoint(cp);
+      out.push(...enc.encode(ch));
+      i += ch.length - 1;
+    }
+    return out;
+  }
+  function formatHex(bytes, style = 'space') {
+    const h = Array.from(bytes, hex2);
+    if (style === 'compact') return h.join('');
+    if (style === 'c') return h.map(x => '0x' + x).join(', ');
+    return h.join(' ');
+  }
+
+  const reflect = (v, w) => { let r = 0; for (let i = 0; i < w; i++) { r = (r << 1) | (v & 1); v >>>= 1; } return r >>> 0; };
+  /* Generic bitwise CRC (Rocksoft model) for width 8, 16 or 32. */
+  function crc(bytes, p) {
+    const w = p.width, top = 2 ** (w - 1), mask = w === 32 ? 0xFFFFFFFF : (1 << w) - 1;
+    const m = x => w === 32 ? x >>> 0 : x & mask;
+    let c = m(p.init);
+    for (let b of bytes) {
+      if (p.refin) b = reflect(b, 8);
+      c = m(c ^ (b << (w - 8)));
+      for (let k = 0; k < 8; k++) c = m((c & top) ? (c << 1) ^ p.poly : c << 1);
+    }
+    if (p.refout) c = reflect(c, w);
+    return m(c ^ p.xorout);
+  }
+  const sum = bytes => bytes.reduce((a, b) => a + b, 0);
+  const CRC_PARAMS = [
+    ['CRC-8', 8, 0x07, 0x00, false, 0x00, 0xF4],
+    ['CRC-8/MAXIM', 8, 0x31, 0x00, true, 0x00, 0xA1, '1-Wire / DS18B20'],
+    ['CRC-16/MODBUS', 16, 0x8005, 0xFFFF, true, 0x0000, 0x4B37, 'Modbus-RTU'],
+    ['CRC-16/IBM', 16, 0x8005, 0x0000, true, 0x0000, 0xBB3D, '又称 ARC'],
+    ['CRC-16/USB', 16, 0x8005, 0xFFFF, true, 0xFFFF, 0xB4C8],
+    ['CRC-16/CCITT-FALSE', 16, 0x1021, 0xFFFF, false, 0x0000, 0x29B1, '又称 IBM-3740'],
+    ['CRC-16/XMODEM', 16, 0x1021, 0x0000, false, 0x0000, 0x31C3],
+    ['CRC-16/KERMIT', 16, 0x1021, 0x0000, true, 0x0000, 0x2189, '又称 CCITT'],
+    ['CRC-16/X25', 16, 0x1021, 0xFFFF, true, 0xFFFF, 0x906E],
+    ['CRC-32', 32, 0x04C11DB7, 0xFFFFFFFF, true, 0xFFFFFFFF, 0xCBF43926, 'ZIP / Ethernet'],
+    ['CRC-32/MPEG-2', 32, 0x04C11DB7, 0xFFFFFFFF, false, 0x00000000, 0x0376E6E7, 'STM32 硬件 CRC'],
+  ];
+  /* Each algorithm: width in bits, calc(bytes) → unsigned value, le = default byte order on the wire. */
+  const ALGORITHMS = [
+    {id: 'sum8', name: 'SUM8 累加和', note: '求和取低 8 位', width: 8, calc: b => sum(b) & 0xFF},
+    {id: 'lrc', name: 'LRC / 累加和补码', note: 'Modbus-ASCII，-SUM8', width: 8, calc: b => (-sum(b)) & 0xFF},
+    {id: 'sum8not', name: 'SUM8 取反', note: '~SUM8', width: 8, calc: b => (~sum(b)) & 0xFF},
+    {id: 'xor', name: 'XOR / BCC', note: '逐字节异或', width: 8, calc: b => b.reduce((a, x) => a ^ x, 0)},
+    {id: 'sum16', name: 'SUM16 累加和', note: '求和取低 16 位', width: 16, calc: b => sum(b) & 0xFFFF},
+    ...CRC_PARAMS.map(([name, width, poly, init, ref, xorout, check, note]) => {
+      const params = {width, poly, init, refin: ref, refout: ref, xorout};
+      return {id: name.toLowerCase(), name, note: note || '', width, le: ref, params, check, calc: b => crc(b, params)};
+    }),
+  ];
+  function valueBytes(value, width, le) {
+    const out = [];
+    for (let i = width / 8 - 1; i >= 0; i--) out.push(Math.floor(value / 2 ** (8 * i)) & 0xFF);
+    return le ? out.reverse() : out;
+  }
+
+  /* ── Modbus-RTU ── */
+  const crc16modbus = bytes => crc(bytes, {width: 16, poly: 0x8005, init: 0xFFFF, refin: true, refout: true, xorout: 0});
+  const withCrc = bytes => { const c = crc16modbus(bytes); return [...bytes, c & 0xFF, c >> 8]; };
+  const FUNCTIONS = {1: '读线圈', 2: '读离散输入', 3: '读保持寄存器', 4: '读输入寄存器', 5: '写单个线圈', 6: '写单个寄存器', 15: '写多个线圈', 16: '写多个寄存器'};
+  const EXCEPTIONS = {1: '非法功能', 2: '非法数据地址', 3: '非法数据值', 4: '从站设备故障', 5: '确认（处理中）', 6: '从站设备忙', 8: '存储奇偶性差错', 10: '网关路径不可用', 11: '网关目标设备响应失败'};
+  const READ_LIMIT = {1: 2000, 2: 2000, 3: 125, 4: 125};
+
+  /* Decimal (incl. negative / fractional) or 0x-hex number; NaN otherwise. */
+  function parseNumber(text) {
+    const s = String(text).trim();
+    if (/^[+-]?0x[0-9a-f]+$/i.test(s)) { const neg = s[0] === '-'; const v = parseInt(s.replace(/^[+-]?0x/i, ''), 16); return neg ? -v : v; }
+    if (/^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i.test(s)) return Number(s);
+    return NaN;
+  }
+  const splitList = text => String(text).trim().split(/[\s,;，；、]+/).filter(Boolean);
+  function intIn(text, lo, hi, label) {
+    const v = parseNumber(text);
+    if (!Number.isInteger(v) || v < lo || v > hi) throw new Error(`${label}须为 ${lo}–${hi} 的整数（当前："${String(text).trim()}"）`);
+    return v;
+  }
+  const u16 = v => [(v >> 8) & 0xFF, v & 0xFF];
+
+  /* One value → array of 16-bit register words. */
+  function encodeValue(text, type, wordOrder = 'abcd') {
+    const v = parseNumber(text);
+    const bad = range => new Error(`"${text}" 不是有效的 ${type.toUpperCase()} 值${range ? `（${range}）` : ''}`);
+    let words;
+    if (type === 'u16' || type === 'i16') {
+      const hexOk = /0x/i.test(text);
+      if (!Number.isInteger(v)) throw bad();
+      if (type === 'u16' && (v < 0 || v > 0xFFFF)) throw bad('0–65535');
+      if (type === 'i16' && !(hexOk ? v >= 0 && v <= 0xFFFF : v >= -32768 && v <= 32767)) throw bad('-32768–32767');
+      return [v & 0xFFFF];
+    }
+    const dv = new DataView(new ArrayBuffer(4));
+    if (type === 'f32') { if (!Number.isFinite(v)) throw bad(); dv.setFloat32(0, v); }
+    else {
+      if (!Number.isInteger(v)) throw bad();
+      if (type === 'u32' && (v < 0 || v > 0xFFFFFFFF)) throw bad('0–4294967295');
+      if (type === 'i32' && !(/0x/i.test(text) ? v >= 0 && v <= 0xFFFFFFFF : v >= -2147483648 && v <= 2147483647)) throw bad('-2147483648–2147483647');
+      dv.setUint32(0, v >>> 0);
+    }
+    words = [dv.getUint16(0), dv.getUint16(2)];
+    return wordOrder === 'cdab' ? words.reverse() : words;
+  }
+  function packCoils(bits) {
+    const out = new Array(Math.ceil(bits.length / 8)).fill(0);
+    bits.forEach((b, i) => { if (b) out[i >> 3] |= 1 << (i & 7); });
+    return out;
+  }
+  function parseBits(text) {
+    return splitList(text).flatMap(t => {
+      if (!/^[01]+$/.test(t)) throw new Error(`线圈值只能是 0 或 1（当前："${t}"）`);
+      return t.split('').map(Number);
+    });
+  }
+
+  /* cfg: {slave, fc, start, qty, coil, value, valueType, values, type, wordOrder} (strings ok).
+     Returns {bytes, segments:[{kind,bytes}], responseLength}. */
+  function buildModbus(cfg) {
+    const slave = intIn(cfg.slave, 0, 247, '从站地址');
+    const fc = Number(cfg.fc);
+    if (!FUNCTIONS[fc]) throw new Error('不支持的功能码');
+    const start = intIn(cfg.start, 0, 0xFFFF, '起始地址');
+    const seg = [{kind: 'addr', bytes: [slave]}, {kind: 'fc', bytes: [fc]}, {kind: 'start', bytes: u16(start)}];
+    let responseLength;
+    const checkEnd = n => { if (start + n > 0x10000) throw new Error(`起始地址 + 数量超出 65535（${start} + ${n}）`); };
+    if (READ_LIMIT[fc]) {
+      const qty = intIn(cfg.qty, 1, READ_LIMIT[fc], '数量');
+      checkEnd(qty);
+      seg.push({kind: 'qty', bytes: u16(qty)});
+      responseLength = 5 + (fc <= 2 ? Math.ceil(qty / 8) : qty * 2);
+    } else if (fc === 5) {
+      seg.push({kind: 'qty', bytes: Number(cfg.coil) ? [0xFF, 0x00] : [0x00, 0x00]});
+      responseLength = 8;
+    } else if (fc === 6) {
+      seg.push({kind: 'qty', bytes: u16(encodeValue(String(cfg.value).trim(), cfg.valueType || 'u16')[0])});
+      responseLength = 8;
+    } else if (fc === 15) {
+      const bits = parseBits(cfg.values);
+      if (bits.length < 1 || bits.length > 1968) throw new Error(`线圈数量须为 1–1968（当前 ${bits.length}）`);
+      checkEnd(bits.length);
+      const data = packCoils(bits);
+      seg.push({kind: 'qty', bytes: u16(bits.length)}, {kind: 'count', bytes: [data.length]}, {kind: 'data', bytes: data});
+      responseLength = 8;
+    } else {
+      const tokens = splitList(cfg.values);
+      const words = tokens.flatMap(t => encodeValue(t, cfg.type || 'u16', cfg.wordOrder));
+      if (words.length < 1 || words.length > 123) throw new Error(`寄存器数量须为 1–123（当前 ${words.length}）`);
+      checkEnd(words.length);
+      seg.push({kind: 'qty', bytes: u16(words.length)}, {kind: 'count', bytes: [words.length * 2]}, {kind: 'data', bytes: words.flatMap(u16)});
+      responseLength = 8;
+    }
+    const body = seg.flatMap(s => s.bytes);
+    const full = withCrc(body);
+    seg.push({kind: 'crc', bytes: full.slice(-2)});
+    return {bytes: full, segments: seg, responseLength};
+  }
+
+  /* Parse one RTU frame. Returns {kind:'request'|'response'|'exception', slave, fc, fields:[[label,value]], registers?, coils?, crcOk, crcCalc}. */
+  function parseModbus(bytes) {
+    if (bytes.length < 4) throw new Error('帧长度不足 4 字节');
+    const body = bytes.slice(0, -2);
+    const crcCalc = crc16modbus(body), crcGot = bytes[bytes.length - 2] | (bytes[bytes.length - 1] << 8);
+    const slave = bytes[0], fc = bytes[1];
+    const word = i => (body[i] << 8) | body[i + 1];
+    const r = {slave, fc, crcOk: crcCalc === crcGot, crcCalc, crcGot, fields: []};
+    const need = (n, what) => { if (body.length !== n) throw new Error(`${what}应为 ${n + 2} 字节（含 CRC），实际 ${bytes.length} 字节`); };
+    if (fc & 0x80) {
+      need(3, '异常响应');
+      r.kind = 'exception';
+      r.fields.push(['原功能码', `0x${hex2(fc & 0x7F)} ${FUNCTIONS[fc & 0x7F] || ''}`], ['异常码', `0x${hex2(body[2])} ${EXCEPTIONS[body[2]] || '未知'}`]);
+      return r;
+    }
+    if (!FUNCTIONS[fc]) throw new Error(`不支持解析功能码 0x${hex2(fc)}`);
+    if (READ_LIMIT[fc]) {
+      /* A request is always 6 bytes before CRC; a response carries byte count = len-3 (even for register reads).
+         A 6-byte body is treated as a request (a 3-byte coil response is indistinguishable from start address 0x03xx). */
+      const isResp = body.length !== 6 && body[2] === body.length - 3 && (fc <= 2 || body[2] % 2 === 0);
+      if (!isResp) {
+        need(6, '读请求');
+        r.kind = 'request';
+        r.fields.push(['起始地址', `${word(2)} (0x${hex2(body[2])}${hex2(body[3])})`], ['数量', String(word(4))]);
+        return r;
+      }
+      r.kind = 'response';
+      const data = body.slice(3);
+      r.fields.push(['字节数', String(body[2])]);
+      if (fc <= 2) r.coils = data.flatMap(b => Array.from({length: 8}, (_, i) => (b >> i) & 1));
+      else r.registers = Array.from({length: data.length / 2}, (_, i) => (data[2 * i] << 8) | data[2 * i + 1]);
+      return r;
+    }
+    if (fc === 5 || fc === 6) {
+      need(6, fc === 5 ? '写单个线圈帧' : '写单个寄存器帧');
+      r.kind = 'request/response';
+      r.fields.push(['地址', `${word(2)} (0x${hex2(body[2])}${hex2(body[3])})`]);
+      const v = word(4);
+      r.fields.push(fc === 5 ? ['线圈状态', v === 0xFF00 ? 'ON (FF 00)' : v === 0 ? 'OFF (00 00)' : `非法值 0x${v.toString(16).toUpperCase()}`] : ['寄存器值', `0x${v.toString(16).toUpperCase().padStart(4, '0')} = ${v} (I16 ${v > 32767 ? v - 65536 : v})`]);
+      return r;
+    }
+    r.fields.push(['起始地址', `${word(2)} (0x${hex2(body[2])}${hex2(body[3])})`], ['数量', String(word(4))]);
+    if (body.length === 6) { r.kind = 'response'; return r; }
+    r.kind = 'request';
+    const n = body[6];
+    need(7 + n, '写多个请求');
+    const data = body.slice(7);
+    r.fields.push(['字节数', String(n)]);
+    if (fc === 15) r.coils = data.flatMap(b => Array.from({length: 8}, (_, i) => (b >> i) & 1)).slice(0, word(4));
+    else r.registers = Array.from({length: n / 2}, (_, i) => (data[2 * i] << 8) | data[2 * i + 1]);
+    return r;
+  }
+
+  const api = {parseHex, parseAscii, formatHex, crc, ALGORITHMS, valueBytes, parseNumber, splitList, encodeValue, packCoils, parseBits, buildModbus, parseModbus, crc16modbus, withCrc, FUNCTIONS, EXCEPTIONS};
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.SerialMath = api;
+})(globalThis);
+</script><script>
+const S=SerialMath,$=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+
+/* ── copy ── */
+let toastTimer;
+async function copyText(text){
+  try{await navigator.clipboard.writeText(text)}catch{const t=document.createElement('textarea');t.value=text;document.body.append(t);t.select();document.execCommand('copy');t.remove()}
+  const el=$('toast');el.textContent='已复制：'+(text.length>48?text.slice(0,48)+'…':text);el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),1400);
+}
+document.addEventListener('click',e=>{const el=e.target.closest('.copyable');if(el&&el.dataset.copy)copyText(el.dataset.copy)});
+
+/* ── tabs ── */
+function showTab(name){
+  document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.tab===name));
+  $('panel-check').hidden=name!=='check';$('panel-modbus').hidden=name!=='modbus';
+  try{localStorage.setItem('serial-tab',name)}catch{}
+}
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{showTab(t.dataset.tab);history.replaceState(null,'','#'+t.dataset.tab)}));
+function segInit(id,cb){const box=$(id);box.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;box.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));cb(b.dataset.v)});}
+const segValue=id=>$(id).querySelector('[aria-pressed=true]').dataset.v;
+
+/* ── 校验计算 ── */
+let inMode='hex';
+const HINT={hex:'支持 01 02 03 / 010203 / 0x01,0x02 等写法',ascii:'按 UTF-8 编码，支持转义 \\r \\n \\t \\0 \\\\ \\xHH'};
+segInit('in-mode',v=>{
+  /* convert current content so switching mode keeps the same bytes */
+  try{const bytes=inMode==='hex'?S.parseHex($('input').value):S.parseAscii($('input').value);
+    $('input').value=v==='hex'?S.formatHex(bytes):Array.from(bytes,b=>b>=32&&b<127&&b!==92?String.fromCharCode(b):b===13?'\\r':b===10?'\\n':b===92?'\\\\':'\\x'+b.toString(16).toUpperCase().padStart(2,'0')).join('');}catch{}
+  inMode=v;renderCheck();
+});
+function customAlgo(){
+  const w=Number($('c-width').value),mask=w===32?0xFFFFFFFF:(1<<w)-1;
+  const num=id=>{const el=$(id),v=S.parseNumber(el.value);const ok=Number.isInteger(v)&&v>=0&&v<=mask;el.classList.toggle('invalid',!ok);return ok?v:null};
+  const poly=num('c-poly'),init=num('c-init'),xorout=num('c-xor');
+  if(poly===null||init===null||xorout===null)return null;
+  const params={width:w,poly,init,xorout,refin:$('c-refin').checked,refout:$('c-refout').checked};
+  return{id:'custom',name:'自定义 CRC-'+w,note:`poly 0x${poly.toString(16).toUpperCase()}`,width:w,le:params.refin,calc:b=>S.crc(b,params)};
+}
+function renderCheck(){
+  $('in-hint').textContent=HINT[inMode];
+  const err=$('in-error'),rows=$('check-rows');err.classList.remove('visible');
+  let bytes;
+  try{bytes=inMode==='hex'?S.parseHex($('input').value):S.parseAscii($('input').value)}
+  catch(e){err.textContent=e.message;err.classList.add('visible');rows.innerHTML='';$('in-meta').textContent='';return}
+  const head=Math.max(0,parseInt($('skip-head').value)||0),tail=Math.max(0,parseInt($('skip-tail').value)||0);
+  const range=bytes.slice(head,Math.max(head,bytes.length-tail));
+  const fmt=$('fmt').value,endian=$('endian').value;
+  $('in-meta').innerHTML=bytes.length?`共 <b>${bytes.length}</b> 字节，参与校验 <b>${range.length}</b> 字节（第 ${head+1}–${head+range.length} 字节）`+(inMode==='ascii'?`；HEX：<b>${esc(S.formatHex(bytes))}</b>`:''):'';
+  if(!bytes.length){rows.innerHTML='<tr><td colspan=3 style="color:var(--dim);padding:14px 10px">输入数据后自动计算</td></tr>';return}
+  const algos=[...S.ALGORITHMS];const c=customAlgo();if(c)algos.push(c);
+  const sep=fmt==='compact'?'':fmt==='c'?', ':' ';
+  rows.innerHTML=algos.map(a=>{
+    const v=a.calc(range),le=endian==='auto'?!!a.le:endian==='le';
+    const cb=S.valueBytes(v,a.width,le),n=a.width/8;
+    const full=[...bytes,...cb];
+    /* tail match: last n bytes equal the checksum of the data before them (either byte order) */
+    let match=false;
+    if(bytes.length>head+n){const body=bytes.slice(head,bytes.length-n),t=bytes.slice(-n),cv=a.calc(body);match=[false,true].some(l=>S.valueBytes(cv,a.width,l).every((x,i)=>x===t[i]));}
+    const valHex=v.toString(16).toUpperCase().padStart(a.width/4,'0');
+    const dataTxt=S.formatHex(bytes,fmt),crcTxt=S.formatHex(cb,fmt),fullTxt=S.formatHex(full,fmt);
+    return `<tr class="${match?'match':''}"><td class=name>${esc(a.name)}${match?'<span class=badge>末尾匹配</span>':''}<small>${esc(a.note||'')}</small></td>
+<td><button type=button class="copyable check" data-copy="${crcTxt}" title="复制校验码字节（${le?'小端':'大端'}）">${crcTxt}</button><small style="display:block;padding-left:9px">0x${valHex}</small></td>
+<td><button type=button class=copyable data-copy="${fullTxt}" title="复制完整报文">${esc(dataTxt)}${sep}<span class=tail>${crcTxt}</span></button></td></tr>`;
+  }).join('');
+}
+['input','skip-head','skip-tail','endian','fmt','c-width','c-poly','c-init','c-xor','c-refin','c-refout'].forEach(id=>$(id).addEventListener('input',renderCheck));
+$('sample').addEventListener('click',()=>{$('in-mode').querySelector('[data-v=hex]').click();$('input').value='01 03 00 00 00 0A';renderCheck()});
+$('clear-in').addEventListener('click',()=>{$('input').value='';renderCheck();$('input').focus()});
+
+/* ── Modbus 构造 ── */
+segInit('m-fmt',()=>renderModbus());
+let lastFrame=[];
+function renderModbus(){
+  const fc=$('m-fc').value;
+  document.querySelectorAll('#panel-modbus [data-fc]').forEach(el=>el.hidden=!el.dataset.fc.split(' ').includes(fc));
+  const err=$('m-error');err.classList.remove('visible');
+  const fmt=segValue('m-fmt'),frameEl=$('m-frame');
+  try{
+    const r=S.buildModbus({slave:$('m-slave').value,fc,start:$('m-start').value,qty:$('m-qty').value,coil:$('m-coil').value,value:$('m-value').value,valueType:$('m-type6').value,values:fc==='15'?$('m-bits').value:$('m-values').value,type:$('m-type').value,wordOrder:$('m-word').value});
+    lastFrame=r.bytes;
+    const sep=fmt==='compact'?'':fmt==='c'?', ':' ';
+    frameEl.innerHTML=r.segments.map(s=>`<span class="b k-${s.kind}">${S.formatHex(s.bytes,fmt)}</span>`).join(sep);
+    frameEl.dataset.copy=S.formatHex(r.bytes,fmt);
+    const name=S.FUNCTIONS[fc];
+    $('m-meta').innerHTML=`请求 <b>${r.bytes.length}</b> 字节 · CRC <b>0x${S.crc16modbus(r.bytes.slice(0,-2)).toString(16).toUpperCase().padStart(4,'0')}</b> · 正常响应 <b>${r.responseLength}</b> 字节`+(Number($('m-slave').value)===0||$('m-slave').value.trim()==='0'?' · <span class=bad>广播地址，从站不响应</span>':'')+` · ${esc(name)}`;
+  }catch(e){
+    lastFrame=[];frameEl.innerHTML='<span class=k-err>—</span>';delete frameEl.dataset.copy;$('m-meta').textContent='';
+    err.textContent=e.message;err.classList.add('visible');
+  }
+}
+['m-slave','m-fc','m-start','m-qty','m-coil','m-value','m-type6','m-type','m-word','m-bits','m-values'].forEach(id=>$(id).addEventListener('input',renderModbus));
+$('m-to-parse').addEventListener('click',()=>{if(!lastFrame.length)return;$('p-input').value=S.formatHex(lastFrame);renderParse();$('p-input').scrollIntoView({behavior:'smooth',block:'center'})});
+
+/* ── Modbus 解析 ── */
+function renderParse(){
+  const err=$('p-error'),out=$('p-out');err.classList.remove('visible');out.innerHTML='';
+  const text=$('p-input').value;if(!text.trim())return;
+  let r;
+  try{r=S.parseModbus(S.parseHex(text))}catch(e){err.textContent=e.message;err.classList.add('visible');return}
+  const kindName={request:'请求帧（主站 → 从站）',response:'正常响应（从站 → 主站）',exception:'异常响应','request/response':'请求 / 响应（两者格式相同）'}[r.kind];
+  const crcHex=v=>`${(v&0xFF).toString(16).toUpperCase().padStart(2,'0')} ${(v>>8).toString(16).toUpperCase().padStart(2,'0')}`;
+  const rows=[['帧类型',kindName],['从站地址',`${r.slave} (0x${r.slave.toString(16).toUpperCase().padStart(2,'0')})`],['功能码',`0x${r.fc.toString(16).toUpperCase().padStart(2,'0')} ${S.FUNCTIONS[r.fc&0x7F]||''}`],...r.fields];
+  let html=`<dl class=kv>${rows.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}<dt>CRC</dt><dd class="${r.crcOk?'ok':'bad'}">${r.crcOk?'✓ 正确 '+crcHex(r.crcGot):`✗ 错误：帧内 ${crcHex(r.crcGot)}，应为 ${crcHex(r.crcCalc)}`}</dd></dl>`;
+  if(!r.crcOk){const fixed=S.formatHex([...S.parseHex(text).slice(0,-2),r.crcCalc&0xFF,r.crcCalc>>8]);html+=`<p class=meta>修正后报文：<button type=button class="copyable check" data-copy="${fixed}">${fixed}</button></p>`}
+  if(r.registers){
+    html+=`<div class=table-wrap style="margin-top:14px"><table><thead><tr><th>#</th><th>HEX</th><th>U16</th><th>I16</th><th>U32 (ABCD)</th><th>Float32 (ABCD)</th></tr></thead><tbody>${r.registers.map((v,i)=>{
+      const nxt=r.registers[i+1],pair=i%2===0&&nxt!==undefined;let u32='',f='';
+      if(pair){const dv=new DataView(new ArrayBuffer(4));dv.setUint16(0,v);dv.setUint16(2,nxt);u32=dv.getUint32(0);f=+dv.getFloat32(0).toPrecision(7)}
+      return `<tr><td style="color:var(--dim)">${i}</td><td><button type=button class=copyable data-copy="${v.toString(16).toUpperCase().padStart(4,'0')}">${v.toString(16).toUpperCase().padStart(4,'0')}</button></td><td>${v}</td><td>${v>32767?v-65536:v}</td><td>${u32}</td><td>${f}</td></tr>`}).join('')}</tbody></table></div>`;
+  }
+  if(r.coils)html+=`<p class=meta>线圈 / 输入（按地址递增，响应末字节高位补 0）：<button type=button class=copyable data-copy="${r.coils.join(' ')}">${r.coils.join(' ')}</button></p>`;
+  out.innerHTML=html;
+}
+$('p-input').addEventListener('input',renderParse);
+
+/* ── init ── */
+$('input').value='01 03 00 00 00 0A';
+renderCheck();renderModbus();
+let tab=location.hash.slice(1);if(!['check','modbus'].includes(tab)){try{tab=localStorage.getItem('serial-tab')}catch{}}
+showTab(['check','modbus'].includes(tab)?tab:'check');
+</script></body></html>

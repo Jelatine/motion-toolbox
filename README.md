@@ -1,6 +1,6 @@
 # 运动控制工具集 (Motion Toolbox)
 
-一套面向运动控制和机器人工程师的在线工具集，涵盖轨迹规划、电机参数换算和 CANopen 通信辅助，无需安装，直接在浏览器中使用。
+一套面向运动控制和机器人工程师的在线工具集，涵盖轨迹规划、电机参数换算、CANopen 通信辅助和串口/Modbus 数据工具，无需安装，直接在浏览器中使用。
 
 ## 工具列表
 
@@ -60,6 +60,17 @@ DS402 伺服协议与 CANopen 通信的全套调试辅助，包含四个功能�
 - 三维视图为右手坐标系：拇指指向关节 Z+，四指弯曲方向为 q 正方向。
 - 无外部依赖，直接打开 `tools/robot_dh_modeler.html` 即可离线使用。
 
+### 7. 串口数据工具
+
+串口调试辅助，包含两个标签：
+
+| 标签 | 功能 |
+|------|------|
+| 校验计算 | HEX / ASCII 输入，一次算出 SUM8、LRC、XOR、CRC-8/16/32 等常用算法，并按「原始数据 + 校验码」拼成完整报文；支持跳过首尾字节、自定义 CRC 参数、末尾匹配识别 |
+| Modbus-RTU 数据帧 | 可视化配置读/写线圈与寄存器请求帧（含 32 位字序），彩色标注字节字段；粘贴报文自动区分请求/响应/异常并校验 CRC |
+
+所有输出点击即可复制。打开 `tools/serial_data_tool.html` 即可离线使用。
+
 ## 快速开始
 
 无需安装任何依赖，直接用浏览器打开即可：
@@ -85,18 +96,20 @@ npx serve .
 ```
 motion_toolbox/
 ├── index.html                   # 工具导航首页
+├── tests/                       # 纯计算单元测试
 └── tools/
     ├── trajectory_planner.html  # 轨迹规划器
     ├── pulse_joint_converter.html  # 脉冲 / 关节换算器
     ├── canopen_assistant.html   # CANopen 通信辅助
     ├── joint_gear_ratio_calibrator.html  # 关节减速比校正
     ├── joint_angle_offset_calculator.html  # 关节零点偏移计算
-    └── robot_dh_modeler.html    # 机器人 DH 三维建模
+    ├── robot_dh_modeler.html    # 机器人 DH 三维建模
+    └── serial_data_tool.html    # 串口数据 / Modbus-RTU 工具
 ```
 
 ## 技术栈
 
-每个工具都是单个 HTML 文件；单元测试直接读取 HTML 中的计算脚本块：`node --test tests/*.test.js`（DH 正运动学、零点偏移计算）。
+每个工具都是单个 HTML 文件；单元测试直接读取 HTML 中的计算脚本块：`node --test tests/*.test.js`（DH 正运动学、零点偏移计算、串口校验 / Modbus）。
 浏览器交互验证（需本机已安装 Playwright 和 Chromium）：`node tests/robot_dh_browser.cjs`，可在命令末尾传入 Playwright 模块路径；截图写入系统临时目录。
 
 - 纯原生 HTML / CSS / JavaScript，无任何外部依赖
@@ -108,4 +121,5 @@ motion_toolbox/
 - 伺服 / 步进电机控制开发者
 - 机器人关节标定工程师
 - CANopen / DS402 协议调试人员
+- 串口 / Modbus-RTU 调试人员
 - 运动控制算法学习者
